@@ -22,12 +22,24 @@ function point_values(pts::AbstractVector{MarkedPoint{E, M}}) where {E, M}
     pnt_vals, marks
 end
 
-prepend_mark(mp::MarkedPoint, newmark) = MarkedPoint(mp.point, (newmark, mp.mark))
-prepend_mark(p::NakedPoint, mark) = MarkedPoint(p.point, mark)
+push_mark(mp::MarkedPoint, newmark) = MarkedPoint(mp.point, (newmark, mp.mark))
+push_mark(p::NakedPoint, mark) = MarkedPoint(p.point, mark)
 
-function prepend_mark_type(::Type{NakedPoint{E}}, ::Type{M}) where {E, M}
+function pop_mark(mp::MarkedPoint{<:Any, <:Tuple})
+    (MarkedPoint(mp.point, Base.tail(mp.mark)), mp.mark[1])
+end
+pop_mark(mp::MarkedPoint{<:Any, Tuple{}}) = (mp, nothing)
+
+function pop_mark_type(
+    ::Type{MarkedPoint{E, T}}
+) where {E, T<:Tuple{<:Any, Vararg}}
+    MarkedPoint{E, Tuple{T.parameters[2:end]...}}
+end
+pop_mark_type(::Type{M}) where M<:MarkedPoint{<:Any, Tuple{}} = M
+
+function push_mark_type(::Type{NakedPoint{E}}, ::Type{M}) where {E, M}
     MarkedPoint{E, M}
 end
-function prepend_mark_type(::Type{MarkedPoint{E, N}}, ::Type{M}) where {E, N, M}
+function push_mark_type(::Type{MarkedPoint{E, N}}, ::Type{M}) where {E, N, M}
     MarkedPoint{E, Tuple{M, N}}
 end
