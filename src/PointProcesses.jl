@@ -27,7 +27,7 @@ export
     pop_marks,
     pt_merge
 
+include("point.jl")
 include("points.jl")
-include("pointprocesses.jl")
 
 end # module
