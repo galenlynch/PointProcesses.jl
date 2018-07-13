@@ -30,10 +30,8 @@ function pop_mark(mp::MarkedPoint{<:Any, <:Tuple})
 end
 pop_mark(mp::MarkedPoint{<:Any, Tuple{}}) = (mp, nothing)
 
-function pop_mark_type(
-    ::Type{MarkedPoint{E, T}}
-) where {E, T<:Tuple{<:Any, Vararg}}
-    MarkedPoint{E, Tuple{T.parameters[2:end]...}}
+function pop_mark_type(::Type{MarkedPoint{E, T}}) where {E, T<:Tuple}
+    MarkedPoint{E, Base.tuple_type_tail(T)}
 end
 pop_mark_type(::Type{M}) where M<:MarkedPoint{<:Any, Tuple{}} = M
 

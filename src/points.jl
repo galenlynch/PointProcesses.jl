@@ -202,11 +202,12 @@ function pp_downsamp(
     b,
     e,
     resolution,
-    merge_func::Function = pt_merge# Must return type M
-) where {E, M}
+    merge_func::Function = pt_merge,
+    ::Type{RetType} = M # merge_func return type
+) where {E, M, RetType}
     pnts = points(p, b, e)
     np = length(pnts)
-    downsamped_points = Vector{push_mark_type(M, Int)}(np)
+    downsamped_points = Vector{push_mark_type(RetType, Int)}(np)
     @inbounds if np > 0
         range_st = 1
         out_idx = 0
