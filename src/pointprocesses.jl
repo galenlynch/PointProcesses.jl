@@ -2,16 +2,18 @@
 # NakedPointProcess or implement a pointprocess method that will yield a
 # simplepointprocess
 # Alternatively, implement duration, point_range, and count
-abstract type PointProcess{E, T<:Point{E}} end
-abstract type MarkedPointProcess{E, M} <: PointProcess{E, MarkedPoint{E, M}} end
+abstract type PointProcess{E, N, T<:Point{E}} end
+abstract type MarkedPointProcess{E, N, M} <: PointProcess{E, N, MarkedPoint{E, M}} end
 
 rate(p::PointProcess) = count(p) / duration(p)
 rate(p::PointProcess, b, e) = count(p, b, e) / (e - b)
 
+points(p::PointProcess{<:Any, <:Any, M}, args...) where M = M.(point_values(p, args...)...)
+
 # I do not check, nor require, that points are strictly increasing
 struct NakedPointProcess{
     E<:Number, A<:AbstractVector{E}
-} <: PointProcess{E, NakedPoint{E}}
+} <: PointProcess{E, 1, NakedPoint{E}}
     interval::NTuple{2, E}
     points::A
     function NakedPointProcess{E,A}(
@@ -20,7 +22,7 @@ struct NakedPointProcess{
         issorted(points) || throw(ArgumentError("Times is not sorted"))
         validate_interval(interval) || throw(ArgumentError("Interval not valid"))
         if ! isempty(points)
-            if points[1] < interval[1] || points[end] > interval[2]
+            @inbounds if points[1] < interval[1] || points[end] > interval[2]
                 throw(ArgumentError("Points exceed interval"))
             end
         end
@@ -79,13 +81,13 @@ end
 duration(p::NakedPointProcess) = p.interval[2] - p.interval[1]
 time_interval(p::NakedPointProcess) = p.interval
 
-function points(p::NakedPointProcess, b, e)
+function point_values(p::NakedPointProcess, b, e)
     ib, ie = point_range(p, b, e)
-    NakedPoint.(view(p.points, ib:ie))
+    view(p.points, ib:ie)
 end
-points(p::NakedPointProcess) = NakedPoint.(p.points)
+point_values(p::NakedPointProcess) = p.points
 
-point_values(p::PointProcess, args...) = point_values(points(p, args...))
+points(p::NakedPointProcess, args...) = NakedPoint.(point_values(p, args...))
 
 pointprocess(p::NakedPointProcess) = p
 pointprocess(p::PointProcess) = p.pointprocess
@@ -95,10 +97,9 @@ time_interval(p::PointProcess) = time_interval(pointprocess(p))
 point_range(p::PointProcess, args...) = point_range(pointprocess(p), args...)
 count(p::PointProcess, args...) = count(pointprocess(p), args...)
 
-
 struct VariablePointProcess{
     E, P<:NakedPointProcess{E}, M, A<:AbstractVector{M}
-} <: MarkedPointProcess{E, M}
+} <: MarkedPointProcess{E, 1, M}
     pointprocess::P
     marks::A
     function VariablePointProcess{E, P, M, A}(
@@ -135,31 +136,25 @@ function VariablePointProcess(points::AbstractVector{<:MarkedPoint}, args...)
     )
 end
 
-function points(mp::MarkedPointProcess{E, M}, ib, ie) where {E, M}
+function point_values(mp::MarkedPointProcess, ib, ie)
     pp = pointprocess(mp)
     ib, ie = point_range(pp, ib, ie)
-    idx_range = ib:ie
-    out = Vector{MarkedPoint{E, M}}(length(idx_range))
-    for (out_idx, data_idx) in enumerate(idx_range)
-        out[out_idx] = MarkedPoint(pp.points[data_idx], mp.marks[data_idx])
-    end
-    out
-end
-function points(mp::MarkedPointProcess)
-    MarkedPoint.(pointprocess(mp).points, mp.marks)
+    view(pp.points, ib:ie), view(mp.marks, ib:ie)
 end
 
+point_values(mp::MarkedPointProcess) = pointprocess(mp).points, mp.marks
 
-struct SubPointProcess{E, M, P<:PointProcess{E, M}} <: PointProcess{E, M}
+
+struct SubPointProcess{E, M, P<:PointProcess{E, 1, M}} <: PointProcess{E, 1, M}
     pointprocess::P
     interval::NTuple{2, E}
     function SubPointProcess{E, M, P}(
         pointprocess::P, interval::NTuple{2, E}
-    ) where {E, M, P<:PointProcess{E, M}}
+    ) where {E, M, P<:PointProcess{E, 1, M}}
         if ! validate_interval(interval)
             throw(ArgumentError("Invalid interval"))
         end
-        if interval[1] < pointprocess.interval[1] ||
+        @inbounds if interval[1] < pointprocess.interval[1] ||
             interval[2] > pointprocess.interval[2]
             throw(ArgumentError("sub interval is not contained in parent interval"))
         end
@@ -169,17 +164,17 @@ end
 
 function SubPointProcess(
     pointprocess::P, interval::NTuple{2, E}
-) where {E, M, P<:PointProcess{E, M}}
+) where {E, M, P<:PointProcess{E, 1, M}}
     SubPointProcess{E, M, P}(pointprocess, interval)
 end
 
 function SubPointProcess(
-    pointprocess::PointProcess{E, <:Any}, interval::NTuple{2, <:Any}
+    pointprocess::PointProcess{E, 1, <:Any}, interval::NTuple{2, <:Any}
 ) where E
     SubPointProcess(pointprocess, (convert.(E, interval)...))
 end
 
-function SubPointProcess(pointprocess::PointProcess{E, <:Any}, b, e) where E
+function SubPointProcess(pointprocess::PointProcess{E, 1, <:Any}, b, e) where E
     SubPointProcess(pointprocess, (convert(E, b), convert(E, e)))
 end
 
@@ -191,27 +186,27 @@ function count(spp::SubPointProcess, b, e)
     isempty(int_int) ? zero(b) : count(spp.pointprocess, int_int...)
 end
 
-function points(spp::SubPointProcess, b, e)
+function point_values(spp::SubPointProcess, b, e)
     int_int = interval_intersect(spp.interval..., b, e)
     if isempty(int_int)
-        res = points(spp.pointprocess, 1, 0)
+        res = points_values(spp.pointprocess, 1, 0)
     else
-        res = points(spp.pointprocess, int_int...)
+        res = point_values(spp.pointprocess, int_int...)
     end
     res
 end
 
 function pp_downsamp(
-    p::PointProcess{E, M},
+    p::PointProcess{E, 1, M},
     b,
     e,
     resolution,
-    merge_func::Function # Must return type M
+    merge_func::Function = pt_merge# Must return type M
 ) where {E, M}
     pnts = points(p, b, e)
     np = length(pnts)
     downsamped_points = Vector{prepend_mark_type(M, Int)}(np)
-    if np > 0
+    @inbounds if np > 0
         range_st = 1
         out_idx = 0
         for i in 2:np
@@ -232,11 +227,13 @@ function pp_downsamp(
     resize!(downsamped_points, out_idx)
     VariablePointProcess(downsamped_points, b, e)
 end
-function pp_downsamp(
-    p::NakedPointProcess{<:AbstractFloat, <:Any}, b, e, resolution
-)
-    pp_downsamp(p, b, e, resolution, naked_merge)
-end
-function naked_merge(pts::AbstractVector{<:NakedPoint{<:AbstractFloat}})
+function pt_merge(pts::AbstractVector{<:NakedPoint{<:AbstractFloat}})
     NakedPoint(mean(point_values(pts)))
+end
+
+function pt_merge(
+    pts::AbstractVector{<:MarkedPoint{<:AbstractFloat, <:AbstractFloat}}
+)
+    pt_vals, mark_vals = point_values(pts)
+    MarkedPoint(mean(pt_vals), mean(mark_vals))
 end
