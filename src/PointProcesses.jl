@@ -1,3 +1,4 @@
+__precompile__()
 module PointProcesses
 
 import Base: count
@@ -25,7 +26,8 @@ export
     push_mark,
     pop_mark,
     pop_marks,
-    pt_merge
+    pt_merge,
+    pt_extent_merge
 
 include("point.jl")
 include("points.jl")

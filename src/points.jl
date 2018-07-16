@@ -3,7 +3,7 @@
 # simplenakedpoints
 # Alternatively, implement duration, point_range, and count
 abstract type Points{E, N, T<:Point{E}} end
-abstract type MarkedPoints{E, N, M} <: Points{E, N, MarkedPoint{E, M}} end
+MarkedPoints{E, N, M} = Points{E, N, MarkedPoint{E, M}}
 
 rate(p::Points) = count(p) / duration(p)
 rate(p::Points, b, e) = count(p, b, e) / (e - b)
@@ -98,8 +98,8 @@ point_range(p::Points, args...) = point_range(nakedpoints(p), args...)
 count(p::Points, args...) = count(nakedpoints(p), args...)
 
 struct VariablePoints{
-    E, P<:NakedPoints{E}, M, A<:AbstractVector{M}
-} <: MarkedPoints{E, 1, M}
+    E, P<:NakedPoints{E, <:Any}, M, A<:AbstractVector{M}
+} <: Points{E, 1, MarkedPoint{E, M}}
     nakedpoints::P
     marks::A
     function VariablePoints{E, P, M, A}(
@@ -130,10 +130,17 @@ function VariablePoints(
     VariablePoints(pp, marks)
 end
 
-function VariablePoints(points::AbstractVector{<:MarkedPoint}, args...)
-    VariablePoints(
-        getfield.(points, :point), getfield.(points, :mark), args...
-    )
+function VariablePoints(
+    pts::AbstractVector{<:MarkedPoint{E, M}}, args...
+) where {E, M}
+    np = length(pts)
+    ps = Vector{E}(np)
+    mks = Vector{M}(np)
+    @inbounds @simd for i in 1:np
+        ps[i] = pts[i].point
+        mks[i] = pts[i].mark
+    end
+    VariablePoints(ps, mks, args...)
 end
 
 function point_values(mp::MarkedPoints, ib, ie)
@@ -208,9 +215,9 @@ function pp_downsamp(
     pnts = points(p, b, e)
     np = length(pnts)
     downsamped_points = Vector{push_mark_type(RetType, Int)}(np)
+    out_idx = 0
     @inbounds if np > 0
         range_st = 1
-        out_idx = 0
         for i in 2:np
             if pnts[i].point - pnts[i - 1].point >= resolution # End last range
                 out_idx += 1
@@ -230,18 +237,33 @@ function pp_downsamp(
     VariablePoints(downsamped_points, b, e)
 end
 
-function pt_merge(pts::AbstractVector{<:NakedPoint{<:AbstractFloat}})
+function pt_merge(pts::AbstractVector{<:NakedPoint{<:Number}})
     NakedPoint(mean(point_values(pts)))
 end
 function pt_merge(
-    pts::AbstractVector{<:MarkedPoint{<:AbstractFloat, <:AbstractFloat}}
+    pts::AbstractVector{<:MarkedPoint{<:Number, <:Number}}
 )
     pt_vals, mark_vals = point_values(pts)
     MarkedPoint(mean(pt_vals), mean(mark_vals))
 end
 
-function pop_marks(p::VariablePoints{<:Any, <:Tuple{<:Any, Vararg}})
+function pt_extent_merge(pts::AbstractVector{<:MarkedPoint{<:Number, <:Number}})
+    pt_vals, mark_vals = point_values(pts)
+    pt_mean = mean(pt_vals)
+    pt_extent = (minimum(pt_vals), maximum(pt_vals))
+    mark_mean = mean(mark_vals)
+    MarkedPoint(pt_mean, (pt_extent, mark_mean))
+end
+
+function pt_extent_merge(pts::AbstractVector{<:NakedPoint})
+    pt_vals = point_values(pts)
+    pt_mean = mean(pt_vals)
+    pt_extent = (minimum(pt_vals), maximum(pt_vals))
+    MarkedPoint(pt_mean, pt_extent)
+end
+
+function pop_marks(p::VariablePoints{<:Any, <:Any, <:Tuple{<:Any, Vararg}, <:Any})
     pt_vals, mark_vals = point_values(p)
     popped_marks = map(m -> m[2], mark_vals)
-    VariablePoints(pt_vals, mark_vals, time_interval(p))
+    VariablePoints(pt_vals, popped_marks, time_interval(p))
 end

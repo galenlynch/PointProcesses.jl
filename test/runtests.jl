@@ -41,4 +41,7 @@ end
     big_A = rand(20)
     pp_big = NakedPoints(big_A, 0, 1)
     pp_downsamp(pp_big, 0, 1, 0.05)
+    pp_downsamp(
+        pp_big, 0, 1, 0.05, pt_extent_merge, MarkedPoint{Float64, Tuple{Float64, Float64}}
+    )
 end
