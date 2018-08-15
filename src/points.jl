@@ -31,7 +31,7 @@ struct NakedPoints{
 end
 
 function NakedPoints(
-    points::A, interval::NTuple{2, E}, check::Bool = true
+    points::A, interval::NTuple{2, <:E}, check::Bool = true
 ) where {E, A<:AbstractVector{E}}
     if check && ! issorted(points)
         sort!(points)
@@ -40,9 +40,9 @@ function NakedPoints(
 end
 
 function NakedPoints(
-    points::AbstractVector{E}, interval::NTuple{2, <:Any}
-) where {E}
-    NakedPoints(points, (convert.(E, interval)...))
+    points::A, interval::NTuple{2, <:Any}
+) where {E, A<:AbstractVector{E}}
+    NakedPoints(points, (convert.(E, interval)...,))
 end
 
 function NakedPoints(points::AbstractVector{E}, a::Number, b::Number) where E
@@ -134,8 +134,8 @@ function VariablePoints(
     pts::AbstractVector{<:MarkedPoint{E, M}}, args...
 ) where {E, M}
     np = length(pts)
-    ps = Vector{E}(np)
-    mks = Vector{M}(np)
+    @compat ps = Vector{E}(undef, np)
+    @compat mks = Vector{M}(undef, np)
     @inbounds @simd for i in 1:np
         ps[i] = pts[i].point
         mks[i] = pts[i].mark
@@ -171,7 +171,7 @@ struct SubPoints{E, M, P<:Points{E, 1, M}} <: Points{E, 1, M}
 end
 
 function SubPoints(
-    points::P, interval::NTuple{2, E}
+    points::P, interval::NTuple{2, <:E}
 ) where {E, M, P<:Points{E, 1, M}}
     SubPoints{E, M, P}(points, interval)
 end
@@ -179,7 +179,7 @@ end
 function SubPoints(
     points::Points{E, 1, <:Any}, interval::NTuple{2, <:Any}
 ) where E
-    SubPoints(points, (convert.(E, interval)...))
+    SubPoints(points, (convert.(E, interval)...,))
 end
 
 function SubPoints(points::Points{E, 1, <:Any}, b, e) where E
@@ -214,7 +214,7 @@ function pp_downsamp(
 ) where {E, M, RetType}
     pnts = points(p, b, e)
     np = length(pnts)
-    downsamped_points = Vector{push_mark_type(RetType, Int)}(np)
+    @compat downsamped_points = Vector{push_mark_type(RetType, Int)}(undef, np)
     out_idx = 0
     @inbounds if np > 0
         range_st = 1

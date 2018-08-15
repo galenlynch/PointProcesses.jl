@@ -4,7 +4,11 @@ module PointProcesses
 import Base: count
 import GLUtilities: duration, time_interval
 
-using GLUtilities
+using Compat, GLUtilities
+
+@static if VERSION >= v"0.7.0-DEV.2575"
+    using Statistics
+end
 
 export
     # Types
