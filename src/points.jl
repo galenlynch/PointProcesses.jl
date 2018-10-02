@@ -1,48 +1,55 @@
 # If not NakedPoints, expected to have a field "nakedpoints" that is a
 # NakedPoints or implement a nakedpoints method that will yield a
-# simplenakedpoints
+# simple naked points
 # Alternatively, implement duration, point_range, and count
-abstract type Points{E, N, T<:Point{E}} end
-MarkedPoints{E, N, M} = Points{E, N, MarkedPoint{E, M}}
+# point_range(pts, b, e) -> (ib, ie) gives the indices of points between b, e
+# count is the number of points
+# Should also support interval function that gives underlying interval
+abstract type Points{E, N, I<:Interval{E}, T<:Point{E}} end
+MarkedPoints{E, N, I, M} = Points{E, N, I, MarkedPoint{E, M}}
 
 rate(p::Points) = count(p) / duration(p)
 rate(p::Points, b, e) = count(p, b, e) / (e - b)
-
+interval(p::Points) = interval(nakedpoints(p))
+duration(p::Points) = measure(interval(p))
+time_interval(args...) = duration(args...)
 points(p::Points{<:Any, <:Any, M}, args...) where M = M.(point_values(p, args...)...)
 
 # I do not check, nor require, that points are strictly increasing
 struct NakedPoints{
-    E<:Number, A<:AbstractVector{E}
-} <: Points{E, 1, NakedPoint{E}}
-    interval::NTuple{2, E}
+    E<:Number, I<:Interval{E}, A<:AbstractVector{E}
+} <: Points{E, 1, I, NakedPoint{E}}
+    interval::I
     points::A
-    function NakedPoints{E,A}(
-        points::A, interval::NTuple{2, E}
-    ) where {E, A<:AbstractVector{E}}
+    function NakedPoints{E,I,A}(
+        points::A, interval::I
+    ) where {E, I<:Interval{E}, A<:AbstractVector{E}}
         issorted(points) || throw(ArgumentError("Times is not sorted"))
         validate_interval(interval) || throw(ArgumentError("Interval not valid"))
+        (b, e) = bounds(interval)
         if ! isempty(points)
-            @inbounds if points[1] < interval[1] || points[end] > interval[2]
+            if (points[1] < b) | (points[end] > e)
                 throw(ArgumentError("Points exceed interval"))
             end
         end
         new(interval, points)
     end
 end
+interval(p::NakedPoints) = p.interval
 
 function NakedPoints(
-    points::A, interval::NTuple{2, <:E}, check::Bool = true
-) where {E, A<:AbstractVector{E}}
+    points::A, interval::I, check::Bool = true
+) where {E, I<:Interval{E}, A<:AbstractVector{E}}
     if check && ! issorted(points)
         sort!(points)
     end
-    NakedPoints{E, A}(points, interval)
+    NakedPoints{E, I, A}(points, interval)
 end
 
 function NakedPoints(
-    points::A, interval::NTuple{2, <:Any}
-) where {E, A<:AbstractVector{E}}
-    NakedPoints(points, (convert.(E, interval)...,))
+    points::AbstractVector{E}, interval::NTuple{2, <:Any}
+) where E
+    NakedPoints(points, NakedInterval(convert(Tuple{E, E}, interval)))
 end
 
 function NakedPoints(points::AbstractVector{E}, a::Number, b::Number) where E
@@ -61,6 +68,7 @@ function NakedPoints(points::AbstractVector{<:NakedPoint}, args...)
 end
 
 validate_interval(int::NTuple{2, Number}) = int[2] >= int[1]
+validate_interval(i::Interval) = validate_interval(bounds(i))
 
 count(p::NakedPoints) = length(p.points)
 function count(p::NakedPoints, range_start, range_end)
@@ -68,18 +76,16 @@ function count(p::NakedPoints, range_start, range_end)
     max(zero(ib), n_ndx(ib, ie))
 end
 
-function point_range(p::NakedPoints{E, <:Any}, b::E, e::E) where E
+function point_range(p::NakedPoints{E, <:Any, <:Any}, b::E, e::E) where E
     b <= e || throw(ArgumentError("beginning and end not well ordered"))
     ib = searchsortedfirst(p.points, b)
     ie = searchsortedlast(p.points, e)
     ib, ie
 end
-function point_range(p::NakedPoints{E, <:Any}, b, e) where E
+function point_range(p::NakedPoints{E, <:Any, <:Any}, b, e) where E
     point_range(p, convert(E, b), convert(E, e))
 end
 
-duration(p::NakedPoints) = p.interval[2] - p.interval[1]
-time_interval(p::NakedPoints) = p.interval
 
 function point_values(p::NakedPoints, b, e)
     ib, ie = point_range(p, b, e)
@@ -92,19 +98,17 @@ points(p::NakedPoints, args...) = NakedPoint.(point_values(p, args...))
 nakedpoints(p::NakedPoints) = p
 nakedpoints(p::Points) = p.nakedpoints
 
-duration(p::Points) = duration(nakedpoints(p))
-time_interval(p::Points) = time_interval(nakedpoints(p))
 point_range(p::Points, args...) = point_range(nakedpoints(p), args...)
 count(p::Points, args...) = count(nakedpoints(p), args...)
 
 struct VariablePoints{
-    E, P<:NakedPoints{E, <:Any}, M, A<:AbstractVector{M}
-} <: Points{E, 1, MarkedPoint{E, M}}
+    E, I<:Interval{E}, P<:NakedPoints{E, I, <:Any}, M, A<:AbstractVector{M}
+} <: Points{E, 1, I, MarkedPoint{E, M}}
     nakedpoints::P
     marks::A
-    function VariablePoints{E, P, M, A}(
+    function VariablePoints{E, I, P, M, A}(
         nakedpoints::P, marks::A
-    ) where {E, P<:NakedPoints{E}, M, A<:AbstractVector{M}}
+    ) where {E, I<:Interval{E}, P<:NakedPoints{E}, M, A<:AbstractVector{M}}
         if count(nakedpoints) != length(marks)
             throw(DimensionMismatch("point process must be the same size as marks"))
         end
@@ -114,8 +118,8 @@ end
 
 function VariablePoints(
     nakedpoints::P, marks::A
-) where {E, P<:NakedPoints{E}, M, A<:AbstractVector{M}}
-    VariablePoints{E, P, M, A}(nakedpoints, marks)
+) where {E, I<:Interval{E}, P<:NakedPoints{E, <:Any, <:Any}, M, A<:AbstractVector{M}}
+    VariablePoints{E, I, P, M, A}(nakedpoints, marks)
 end
 
 function VariablePoints(
@@ -152,50 +156,55 @@ end
 point_values(mp::MarkedPoints) = nakedpoints(mp).points, mp.marks
 
 
-struct SubPoints{E, M, P<:Points{E, 1, M}} <: Points{E, 1, M}
+struct SubPoints{E, M, I<:Interval{E}, P<:Points{E, 1, <:Any, M}} <: Points{E, 1, I, M}
     points::P
-    interval::NTuple{2, E}
-    function SubPoints{E, M, P}(
-        points::P, interval::NTuple{2, E}
-    ) where {E, M, P<:Points{E, 1, M}}
-        if ! validate_interval(interval)
+    interval::I
+    function SubPoints{E, M, I, P}(
+        points::P, bnd_int::I
+    ) where {E, M, I<:Interval{E}, P<:Points{E, 1, <:Any, M}}
+        if ! validate_interval(bnd_int)
             throw(ArgumentError("Invalid interval"))
         end
-        parent_interval = time_interval(points)
-        @inbounds if interval[1] < parent_interval[1] ||
-            interval[2] > parent_interval[2]
+        if ! is_subinterval(bnd_int, interval(points))
             throw(ArgumentError("sub interval is not contained in parent interval"))
         end
-        new(points, interval)
+        new(points, bnd_int)
     end
 end
 
 function SubPoints(
-    points::P, interval::NTuple{2, <:E}
-) where {E, M, P<:Points{E, 1, M}}
-    SubPoints{E, M, P}(points, interval)
+    points::P, interval::I
+) where {E, M, I<:Interval{E}, P<:Points{E, 1, <:Any, M}}
+    SubPoints{E, M, I, P}(points, interval)
 end
 
 function SubPoints(
-    points::Points{E, 1, <:Any}, interval::NTuple{2, <:Any}
+    points::Points{E, 1, <:Any, <:Any}, interval::NTuple{2, <:Any}
 ) where E
-    SubPoints(points, (convert.(E, interval)...,))
+    SubPoints(points, NakedInterval(interval))
 end
 
-function SubPoints(points::Points{E, 1, <:Any}, b, e) where E
+function SubPoints(points::Points{E, 1, <:Any, <:Any}, b, e) where E
     SubPoints(points, (convert(E, b), convert(E, e)))
 end
 
-duration(spp::SubPoints) = spp.interval[2] - spp.interval[1]
-time_interval(spp::SubPoints) = spp.interval
-count(spp::SubPoints) = count(spp.points, spp.interval...)
+function SubPoints(points::SubPoints, i::Interval)
+    if !is_subinterval(i, interval(points))
+        throw(ArgumentError("Sub interval is not contained in the parent interval"))
+    end
+    SubPoints(points.points, i)
+end
+
+interval(spp::SubPoints) = spp.interval
+count(spp::SubPoints) = count(spp.points, bounds(interval(spp))...)
+
 function count(spp::SubPoints, b, e)
-    int_int = interval_intersect(spp.interval..., b, e)
+    int_int = interval_intersect(bounds(interval(spp.interval))..., b, e)
     isempty(int_int) ? zero(b) : count(spp.points, int_int...)
 end
 
 function point_values(spp::SubPoints, b, e)
-    int_int = interval_intersect(spp.interval..., b, e)
+    int_int = interval_intersect(bounds(interval(spp.interval))..., b, e)
     if isempty(int_int)
         res = points_values(spp.points, 1, 0)
     else
@@ -204,8 +213,10 @@ function point_values(spp::SubPoints, b, e)
     res
 end
 
+point_values(spp::SubPoints) = point_values(spp.points, bounds(spp.interval)...)
+
 function pp_downsamp(
-    p::Points{E, 1, M},
+    p::Points{E, 1, <:Any, M},
     b,
     e,
     resolution,
@@ -265,5 +276,5 @@ end
 function pop_marks(p::VariablePoints{<:Any, <:Any, <:Tuple{<:Any, Vararg}, <:Any})
     pt_vals, mark_vals = point_values(p)
     popped_marks = map(m -> m[2], mark_vals)
-    VariablePoints(pt_vals, popped_marks, time_interval(p))
+    VariablePoints(pt_vals, popped_marks, interval(p))
 end

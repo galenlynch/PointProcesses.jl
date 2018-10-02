@@ -2,9 +2,14 @@ __precompile__()
 module PointProcesses
 
 import Base: count
-import GLUtilities: duration, time_interval
+import GLUtilities:
+    duration,
+    time_interval,
+    measure,
+    is_subinterval,
+    check_overlap
 
-using Compat, GLUtilities
+using Compat, GLUtilities, DataStructures
 
 @static if VERSION >= v"0.7.0-DEV.2575"
     using Statistics
@@ -13,6 +18,11 @@ end
 export
     # Types
     Point,
+    Interval,
+    NakedInterval,
+    MarkedInterval,
+    RelativeInterval,
+    IntervalSet,
     Points,
     NakedPoint,
     NakedPoints,
@@ -31,9 +41,16 @@ export
     pop_mark,
     pop_marks,
     pt_merge,
-    pt_extent_merge
+    pt_extent_merge,
+    bounds,
+    measure,
+    get_mark,
+    interval,
+    complement,
+    interval_levels
 
 include("point.jl")
+include("intervals.jl")
 include("points.jl")
 
 end # module
