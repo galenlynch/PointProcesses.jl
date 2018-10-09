@@ -200,12 +200,12 @@ count(spp::SubPoints) = count(spp.points, bounds(interval(spp))...)
 
 function count(spp::SubPoints, b, e)
     int_int = interval_intersect(bounds(interval(spp.interval))..., b, e)
-    isempty(int_int) ? zero(b) : count(spp.points, int_int...)
+    int_int == nothing ? zero(b) : count(spp.points, int_int...)
 end
 
 function point_values(spp::SubPoints, b, e)
     int_int = interval_intersect(bounds(interval(spp.interval))..., b, e)
-    if isempty(int_int)
+    if int_int == nothing
         res = points_values(spp.points, 1, 0)
     else
         res = point_values(spp.points, int_int...)

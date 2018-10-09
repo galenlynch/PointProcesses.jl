@@ -29,9 +29,12 @@ MarkedInterval(t::NTuple{2, <:Number}, m) = MarkedInterval(NakedInterval(t), m)
 MarkedInterval(a, b, m) = MarkedInterval(NakedInterval(a, b), m)
 
 nakedinterval(m::MarkedInterval) = m.interval
+
 bounds(m::MarkedInterval) = bounds(nakedinterval(m))
 
 get_mark(m::MarkedInterval) = m.mark
+
+_subinterval(m::MarkedInterval, s::NakedInterval) = MarkedInterval(s, get_mark(m))
 
 struct RelativeInterval{D<:Number, I<:Interval{D}, J<:Interval{D}} <: Interval{D, 1}
     reference_interval::I
@@ -40,6 +43,7 @@ struct RelativeInterval{D<:Number, I<:Interval{D}, J<:Interval{D}} <: Interval{D
 end
 
 measure(i::RelativeInterval) = measure(i.this_interval)
+
 function bounds(i::RelativeInterval)
     r_bnds = bounds(i.reference_interval)
     tb, te = bounds(i.this_interval)
@@ -75,6 +79,7 @@ end
 IntervalSet(i::Vararg{<:Interval}) = IntervalSet(i)
 
 measure(i::IntervalSet) = sum(measure, i.intervals)
+
 function bounds(i::IntervalSet{E, <:Any}) where E
     (bounds(i.intervals[1])[1], bounds(i.intervals[end])[2])::NTuple{2, E}
 end
