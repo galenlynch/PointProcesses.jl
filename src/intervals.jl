@@ -193,3 +193,8 @@ function mask_events(evts, i::Interval)
     b, e = bounds(i)
     mask_events(evts, b, e)
 end
+
+function interval_indices(basis, i::Interval)
+    b, e = bounds(i)
+    interval_indices(basis, b, e)
+end

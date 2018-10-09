@@ -8,6 +8,7 @@ import GLUtilities:
     measure,
     is_subinterval,
     check_overlap,
+    interval_indices,
     interval_intersect,
     mask_events
 
