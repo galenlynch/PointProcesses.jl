@@ -52,6 +52,7 @@ export
     interval,
     complement,
     interval_levels,
+    chunk,
     subinterval,
     mask_events
 

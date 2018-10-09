@@ -222,6 +222,24 @@ function cut_levels!(end_heap, out, b, bn, level, outno)
     level, outno
 end
 
+function chunk(
+    int::Interval{E, 1},
+    chunk_len::E,
+    exact::Bool = false
+) where E
+    chunk_len > 0 || throw(ArgumentError("chunk_len must be positive"))
+    m = measure(int)
+    b, e = bounds(int)
+    nc = convert(Int, ifelse(exact, fld(m, chunk_len), cld(m, chunk_len)))
+    out = Vector{NakedInterval{E}}(undef, nc)
+    for i = 1:nc
+        nb = b + chunk_len * (i - 1)
+        ne = min(b + chunk_len * (i), e)
+        out[i] = _subinterval(int, NakedInterval(nb, ne))
+    end
+    out
+end
+
 function mask_events(evts, i::Interval)
     b, e = bounds(i)
     mask_events(evts, b, e)
