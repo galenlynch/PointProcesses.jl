@@ -53,6 +53,7 @@ export
     complement,
     interval_levels,
     chunk,
+    shrink,
     subinterval,
     mask_events
 

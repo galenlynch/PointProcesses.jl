@@ -240,6 +240,28 @@ function chunk(
     out
 end
 
+function shrink(int::Interval, shrink_measure)
+    m = measure(int)
+    adj_shrink = min(shrink_measure, m) / 2
+    b, e = bounds(int)
+    subinterval(int, b + adj_shrink, e - adj_shrink)
+end
+
+function shrink(ints::AbstractVector{<:Interval}, shrink_measure)
+    survivors = findall(i -> measure(i) >= shrink_measure, ints)
+    nout = length(survivors)
+    out = similar(ints, nout)
+    adj_shrink = shrink_measure / 2
+    for (outno, intno) in enumerate(survivors)
+        b, e = bounds(ints[intno])
+        out[outno] = _subinterval(
+            ints[intno],
+            NakedInterval(b + adj_shrink, e - adj_shrink)
+        )
+    end
+    out
+end
+
 function mask_events(evts, i::Interval)
     b, e = bounds(i)
     mask_events(evts, b, e)
