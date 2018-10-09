@@ -3,6 +3,11 @@ abstract type Interval{E, N} end
 
 measure(m::Interval) = measure(bounds(m))
 
+function interval_intersect(a::Interval, b::Interval)
+    int_int = interval_intersect(bounds(a)..., bounds(b)...)
+    int_int == nothing ? nothing : NakedInterval(int_int...)
+end
+
 check_overlap(m::Interval, n::Interval) = check_overlap(bounds(m)..., bounds(n)...)
 nakedinterval(i::Interval) = NakedInterval(bounds(i))
 
@@ -182,4 +187,9 @@ function cut_levels!(end_heap, out, b, bn, level, outno)
     outno += 1
     out[outno] = MarkedInterval(last_end, bn, level)
     level, outno
+end
+
+function mask_events(evts, i::Interval)
+    b, e = bounds(i)
+    mask_events(evts, b, e)
 end

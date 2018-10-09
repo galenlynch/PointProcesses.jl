@@ -7,7 +7,9 @@ import GLUtilities:
     time_interval,
     measure,
     is_subinterval,
-    check_overlap
+    check_overlap,
+    interval_intersect,
+    mask_events
 
 using Compat, GLUtilities, DataStructures
 
@@ -47,7 +49,8 @@ export
     get_mark,
     interval,
     complement,
-    interval_levels
+    interval_levels,
+    mask_events
 
 include("point.jl")
 include("intervals.jl")
