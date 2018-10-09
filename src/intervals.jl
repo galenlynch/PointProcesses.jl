@@ -3,6 +3,8 @@ abstract type Interval{E, N} end
 
 measure(m::Interval) = measure(bounds(m))
 
+subinterval(int::Interval, b::Real, e::Real) = subinterval(int, NakedInterval(b, e))
+
 function interval_intersect(a::Interval, b::Interval)
     int_int = interval_intersect(bounds(a)..., bounds(b)...)
     int_int == nothing ? nothing : NakedInterval(int_int...)
@@ -25,6 +27,15 @@ NakedInterval(a, b) = NakedInterval(promote(a, b))
 bounds(m::NakedInterval) = m.interval
 
 nakedinterval(m::NakedInterval) = m
+
+function subinterval(int::Interval{E, 1}, sub::NakedInterval{E}) where E
+    if ! is_subinterval(sub, int)
+        throw(ArgumentError("Not a subinterval"))
+    end
+    _subinterval(int, sub)
+end
+
+_subinterval(::NakedInterval, sub::NakedInterval) = sub
 
 struct MarkedInterval{D<:Number, M} <: Interval{D, 1}
     interval::NakedInterval{D}
@@ -56,6 +67,14 @@ function bounds(i::RelativeInterval)
     (tb + r_bnds[bndno], te + r_bnds[bndno])
 end
 
+function _subinterval(m::RelativeInterval, s::NakedInterval)
+    rb, re = bounds(m.reference_interval)
+    sb, se = bounds(s)
+    anchor = ifselse(m.achored_left, rb, re)
+    new_int = _subinterval(m.this_interval, NakedInterval(sb - anchor, se - anchor))
+    RelativeInterval(m.reference_interval, r.anchored_left, new_int)
+end
+
 # intervals must be contiguous
 # They must also be ordered
 # Cannot be empty
@@ -82,11 +101,25 @@ function IntervalSet(intervals::T) where {E, T<:NTuple{<:Any, Interval{E, 1}}}
     IntervalSet{E, T}(intervals)
 end
 IntervalSet(i::Vararg{<:Interval}) = IntervalSet(i)
+IntervalSet(i::AbstractVector{<:Interval}) = IntervalSet(Tuple(i))
 
 measure(i::IntervalSet) = sum(measure, i.intervals)
 
 function bounds(i::IntervalSet{E, <:Any}) where E
     (bounds(i.intervals[1])[1], bounds(i.intervals[end])[2])::NTuple{2, E}
+end
+
+function _subinterval(m::IntervalSet{<:Any, T}, s::NakedInterval) where T
+    overlap_idxs = findall(int -> check_overlap(int, s), m.intervals)
+    noverlap = length(overlap_mask)
+    j_type = reduce(typejoin, T.parameters[overlap_idxs])
+    new_ints = Vector{j_type}(undef, noverlap)
+    for (i, int_idx) in enumerate(overlap_idxs)
+        new_ints[i] = _subinterval(
+            m.intervals[int_idx], interval_intersect(m.intervals[int_idx], s)
+        )
+    end
+    IntervalSet(Tuple(new_ints))
 end
 
 function complement!(

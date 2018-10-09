@@ -52,6 +52,7 @@ export
     interval,
     complement,
     interval_levels,
+    subinterval,
     mask_events
 
 include("point.jl")
