@@ -36,6 +36,7 @@ export
 
     # Functions
     duration,
+    rate,
     points,
     point_values,
     pp_downsamp,
