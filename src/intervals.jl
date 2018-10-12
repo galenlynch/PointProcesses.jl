@@ -1,6 +1,10 @@
 # Must be well ordered, and support bounds and measure functions
 abstract type Interval{E, N} end
 
+function midpoint(m::Interval)
+    b, e = bounds(m)
+    b + (e - b) / 2
+end
 measure(m::Interval) = measure(bounds(m))
 
 subinterval(int::Interval, b::Real, e::Real) = subinterval(int, NakedInterval(b, e))

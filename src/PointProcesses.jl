@@ -55,7 +55,8 @@ export
     chunk,
     shrink,
     subinterval,
-    mask_events
+    mask_events,
+    midpoint
 
 include("point.jl")
 include("intervals.jl")
