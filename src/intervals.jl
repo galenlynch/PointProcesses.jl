@@ -275,3 +275,7 @@ function interval_indices(basis, i::Interval)
     b, e = bounds(i)
     interval_indices(basis, b, e)
 end
+
+function interval_indices(basis, a::AbstractVector{<:Interval})
+    map(i -> interval_indices(basis, i), a)
+end
