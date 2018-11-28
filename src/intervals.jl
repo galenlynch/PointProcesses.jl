@@ -226,11 +226,14 @@ function cut_levels!(end_heap, out, b, bn, level, outno)
     level, outno
 end
 
-function chunk(
-    int::Interval{E, 1},
-    chunk_len::E,
-    exact::Bool = false
-) where E
+"""
+    chunk(int::Interval{E, 1}, chunk_len::E [, exact::Bool = false]) where E
+
+Break an interval, `int` into smaller chunks of length `chunk_len`. If `exact`
+is `true`, then any remainder of `int` will be dropped. Otherwise, the last
+chunk may not be of measure `chunk_len`.
+"""
+function chunk(int::Interval{E, 1}, chunk_len::E, exact::Bool = false) where E
     chunk_len > 0 || throw(ArgumentError("chunk_len must be positive"))
     m = measure(int)
     b, e = bounds(int)
@@ -238,7 +241,7 @@ function chunk(
     out = Vector{NakedInterval{E}}(undef, nc)
     for i = 1:nc
         nb = b + chunk_len * (i - 1)
-        ne = min(b + chunk_len * (i), e)
+        ne = min(b + chunk_len * i, e)
         out[i] = _subinterval(int, NakedInterval(nb, ne))
     end
     out
