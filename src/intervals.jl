@@ -284,9 +284,9 @@ function interval_indices(basis, a::AbstractVector{<:Interval})
 end
 
 function intervals_diff(a_ints::AbstractVector{<:Interval}, b_ints)
-    intervals_diff(map(i -> bounds(i), a_ints), b_ints)
+    NakedInterval.(intervals_diff(map(i -> bounds(i), a_ints), b_ints))
 end
 
 function intervals_diff(a_ints, b_ints::AbstractVector{<:Interval})
-    intervals_diff(a_ints, map(i -> bounds(i), b_ints))
+    NakedInterval.(intervals_diff(a_ints, map(i -> bounds(i), b_ints)))
 end
