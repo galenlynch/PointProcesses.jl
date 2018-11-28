@@ -10,7 +10,8 @@ import GLUtilities:
     check_overlap,
     interval_indices,
     interval_intersect,
-    mask_events
+    mask_events,
+    intervals_diff
 
 using Compat, GLUtilities, DataStructures
 
