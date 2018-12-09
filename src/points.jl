@@ -12,8 +12,10 @@ rate(p::Points) = count(p) / duration(p)
 rate(p::Points, b, e) = count(p, b, e) / (e - b)
 interval(p::Points) = interval(nakedpoints(p))
 duration(p::Points) = measure(interval(p))
-time_interval(args...) = duration(args...)
-points(p::Points{<:Any, <:Any, M}, args...) where M = M.(point_values(p, args...)...)
+time_interval(p::Points) = interval(p)
+function points(p::Points{<:Any, <:Any, <:Any, M}, args...) where M
+    M.(point_values(p, args...)...)
+end
 
 # I do not check, nor require, that points are strictly increasing
 struct NakedPoints{
@@ -47,9 +49,9 @@ function NakedPoints(
 end
 
 function NakedPoints(
-    points::AbstractVector{E}, interval::NTuple{2, <:Any}
+    points::AbstractVector{E}, interval::NTuple{2, <:Any}, check::Bool = true
 ) where E
-    NakedPoints(points, NakedInterval(convert(Tuple{E, E}, interval)))
+    NakedPoints(points, NakedInterval(convert(Tuple{E, E}, interval)), check)
 end
 
 function NakedPoints(points::AbstractVector{E}, a::Number, b::Number) where E
@@ -118,7 +120,13 @@ end
 
 function VariablePoints(
     nakedpoints::P, marks::A
-) where {E, I<:Interval{E}, P<:NakedPoints{E, <:Any, <:Any}, M, A<:AbstractVector{M}}
+) where {
+    E,
+    I<:Interval{E},
+    P<:NakedPoints{E, I, <:Any},
+    M,
+    A<:AbstractVector{M}
+}
     VariablePoints{E, I, P, M, A}(nakedpoints, marks)
 end
 
@@ -273,7 +281,7 @@ function pt_extent_merge(pts::AbstractVector{<:NakedPoint})
     MarkedPoint(pt_mean, pt_extent)
 end
 
-function pop_marks(p::VariablePoints{<:Any, <:Any, <:Tuple{<:Any, Vararg}, <:Any})
+function pop_marks(p::VariablePoints)
     pt_vals, mark_vals = point_values(p)
     popped_marks = map(m -> m[2], mark_vals)
     VariablePoints(pt_vals, popped_marks, interval(p))
