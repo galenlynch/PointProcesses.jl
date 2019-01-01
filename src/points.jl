@@ -203,6 +203,12 @@ function SubPoints(points::SubPoints, i::Interval)
     SubPoints(points.points, i)
 end
 
+function maybe_subpoints(points::Points, i::Interval)
+    pi = interval(points)
+    int_int = interval_intersect(pi, i)
+    int_int == nothing ? nothing : SubPoints(points, int_int)
+end
+
 interval(spp::SubPoints) = spp.interval
 count(spp::SubPoints) = count(spp.points, bounds(interval(spp))...)
 

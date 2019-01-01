@@ -38,6 +38,7 @@ export
     # Functions
     duration,
     rate,
+    maybe_subpoints,
     points,
     point_values,
     pp_downsamp,
