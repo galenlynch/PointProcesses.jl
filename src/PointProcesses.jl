@@ -11,7 +11,8 @@ import GLUtilities:
     interval_indices,
     interval_intersect,
     mask_events,
-    intervals_diff
+    intervals_diff,
+    midpoint
 
 using Compat, GLUtilities, DataStructures
 
