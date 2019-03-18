@@ -10,9 +10,12 @@ MarkedPoints{E, N, I, M} = Points{E, N, I, MarkedPoint{E, M}}
 
 rate(p::Points) = count(p) / duration(p)
 rate(p::Points, b, e) = count(p, b, e) / (e - b)
+rate(ps::AbstractVector{<:Points}) = sum(count, ps) / sum(duration, ps)
 interval(p::Points) = interval(nakedpoints(p))
-duration(p::Points) = measure(interval(p))
+measure(p::Points) = measure(interval(p))
+duration(p::Points) = measure(p)
 time_interval(p::Points) = interval(p)
+bounds(p::Points) = bounds(interval(p))
 function points(p::Points{<:Any, <:Any, <:Any, M}, args...) where M
     M.(point_values(p, args...)...)
 end

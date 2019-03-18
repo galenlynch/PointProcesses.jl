@@ -115,6 +115,12 @@ IntervalSet(i::AbstractVector{<:Interval}) = IntervalSet(Tuple(i))
 
 measure(i::IntervalSet) = sum(measure, i.intervals)
 
+function get_mark(i::IntervalSet)
+    marked_int_no = findfirst(x -> isa(x, MarkedInterval), i.intervals)
+    marked_int_no == nothing && error("Did not find a mark")
+    get_mark(i.intervals[marked_int_no])
+end
+
 function bounds(i::IntervalSet{E, <:Any}) where E
     (bounds(i.intervals[1])[1], bounds(i.intervals[end])[2])::NTuple{2, E}
 end
