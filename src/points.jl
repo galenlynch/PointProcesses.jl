@@ -59,7 +59,7 @@ function NakedPoints(points::AbstractVector{E}, a::Number, b::Number) where E
 end
 
 function NakedPoints(points::AbstractVector)
-    isempty(points) && throw(ArgumnetError("points cannot be empty"))
+    isempty(points) && throw(ArgumentError("points cannot be empty"))
     mypoints = copy(points)
     sort!(mypoints)
     NakedPoints(mypoints, (mypoints[1], mypoints[end]), false)
