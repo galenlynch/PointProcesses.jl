@@ -10,8 +10,14 @@ measure(m::Interval) = measure(bounds(m))
 subinterval(int::Interval, b::Real, e::Real) = subinterval(int, NakedInterval(b, e))
 
 function interval_intersect(a::Interval, b::Interval)
-    int_int = interval_intersect(bounds(a)..., bounds(b)...)
-    int_int == nothing ? nothing : NakedInterval(int_int...)
+    int_int = interval_intersect(bounds(a), bounds(b))
+    int_int == nothing ? nothing : NakedInterval(int_int)
+end
+
+function interval_intersections(
+    a::AbstractVector{<:Interval}, b::AbstractVector{<:Interval}
+)
+    NakedInterval.(interval_intersections(bounds.(a), bounds.(b)))
 end
 
 check_overlap(m::Interval, n::Interval) = check_overlap(bounds(m)..., bounds(n)...)

@@ -12,7 +12,8 @@ import GLUtilities:
     interval_intersect,
     mask_events,
     intervals_diff,
-    midpoint
+    midpoint,
+    interval_intersections
 
 using Compat, GLUtilities, DataStructures
 
@@ -59,7 +60,8 @@ export
     shrink,
     subinterval,
     mask_events,
-    midpoint
+    midpoint,
+    interval_intersections
 
 include("point.jl")
 include("intervals.jl")
