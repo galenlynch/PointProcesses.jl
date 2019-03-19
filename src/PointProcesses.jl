@@ -61,7 +61,8 @@ export
     subinterval,
     mask_events,
     midpoint,
-    interval_intersections
+    interval_intersections,
+    nakedinterval
 
 include("point.jl")
 include("intervals.jl")
