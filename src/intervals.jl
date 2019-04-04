@@ -14,6 +14,7 @@ function interval_intersect(a::Interval, b::Interval)
     int_int == nothing ? nothing : NakedInterval(int_int)
 end
 
+# Requires inputs to be well ordered
 function interval_intersections(
     a::AbstractVector{<:Interval}, b::AbstractVector{<:Interval}
 )
