@@ -19,13 +19,14 @@ bounds(p::Points) = bounds(interval(p))
 function points(p::Points{<:Any, <:Any, <:Any, M}, args...) where M
     M.(point_values(p, args...)...)
 end
+nakedvalues(p::Points) = point_values(nakedpoints(p))
 
 # I do not check, nor require, that points are strictly increasing
 struct NakedPoints{
     E<:Number, I<:Interval{E}, A<:AbstractVector{E}
 } <: Points{E, 1, I, NakedPoint{E}}
-    interval::I
     points::A
+    interval::I
     function NakedPoints{E,I,A}(
         points::A, interval::I
     ) where {E, I<:Interval{E}, A<:AbstractVector{E}}
@@ -37,7 +38,7 @@ struct NakedPoints{
                 throw(ArgumentError("Points exceed interval"))
             end
         end
-        new(interval, points)
+        new(points, interval)
     end
 end
 interval(p::NakedPoints) = p.interval
@@ -103,6 +104,11 @@ points(p::NakedPoints, args...) = NakedPoint.(point_values(p, args...))
 nakedpoints(p::NakedPoints) = p
 nakedpoints(p::Points) = p.nakedpoints
 
+function translate(p::NakedPoints, offset)
+    rb, re = bounds(p)
+    NakedPoints(p.points .+ offset, (rb + offset, re + offset))
+end
+
 point_range(p::Points, args...) = point_range(nakedpoints(p), args...)
 count(p::Points, args...) = count(nakedpoints(p), args...)
 
@@ -166,6 +172,9 @@ end
 
 point_values(mp::MarkedPoints) = nakedpoints(mp).points, mp.marks
 
+translate(mp::VariablePoints, offset) = VariablePoints(
+    translate(nakedpoints(mp), offset), mp.marks
+)
 
 struct SubPoints{E, M, I<:Interval{E}, P<:Points{E, 1, <:Any, M}} <: Points{E, 1, I, M}
     points::P

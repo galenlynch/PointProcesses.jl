@@ -62,7 +62,9 @@ export
     mask_events,
     midpoint,
     interval_intersections,
-    nakedinterval
+    nakedinterval,
+    nakedvalues,
+    translate
 
 include("point.jl")
 include("intervals.jl")
