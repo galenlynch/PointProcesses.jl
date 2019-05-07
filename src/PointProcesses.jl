@@ -1,7 +1,7 @@
 __precompile__()
 module PointProcesses
 
-import Base: count
+import Base: count, show
 import GLUtilities:
     duration,
     time_interval,

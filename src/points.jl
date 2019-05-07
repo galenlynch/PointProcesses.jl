@@ -76,6 +76,11 @@ end
 validate_interval(int::NTuple{2, Number}) = int[2] >= int[1]
 validate_interval(i::Interval) = validate_interval(bounds(i))
 
+function show(io::IO, ::MIME"text/plain", pts::T) where T<:NakedPoints
+    println(io, T, " points defined on interval ", bounds(pts), ":")
+    print(io, "    ", point_values(pts))
+end
+
 count(p::NakedPoints) = length(p.points)
 function count(p::NakedPoints, range_start, range_end)
     ib, ie = point_range(p, range_start, range_end)
@@ -163,6 +168,22 @@ function VariablePoints(
     end
     VariablePoints(ps, mks, args...)
 end
+
+function show(io::IO, ::MIME"text/plain", pts::T) where T<:VariablePoints
+    println(io, T, " points defined on interval ", bounds(pts), ":")
+    println(io, "  points: ", point_values(pts.nakedpoints))
+    println(io, "   marks: ", pts.marks)
+end
+
+function show(io::IO, pts::T) where T<:VariablePoints
+    if get(io, :typeinfo, T) != T
+        print(io, T)
+    end
+    print(
+        io, "(", bounds(pts), ',', collect(zip(point_values(pts)...)), ')'
+    )
+end
+
 
 function point_values(mp::MarkedPoints, ib, ie)
     pp = nakedpoints(mp)
