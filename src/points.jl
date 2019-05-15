@@ -5,8 +5,11 @@
 # point_range(pts, b, e) -> (ib, ie) gives the indices of points between b, e
 # count is the number of points
 # Should also support interval function that gives underlying interval
-abstract type Points{E, N, I<:Interval{E}, T<:Point{E}} end
-MarkedPoints{E, N, I, M} = Points{E, N, I, MarkedPoint{E, M}}
+abstract type Points{E, N, I<:Interval{E}, T<:Point{E}} <: AbstractVector{T} end
+const MarkedPoints{E, N, I, M} = Points{E, N, I, MarkedPoint{E, M}}
+
+IndexStyle(::Points) = IndexLinear()
+setindex!(::Points) = throw(ReadOnlyMemoryError())
 
 rate(p::Points) = count(p) / duration(p)
 rate(p::Points, b, e) = count(p, b, e) / (e - b)
@@ -42,6 +45,11 @@ struct NakedPoints{
     end
 end
 interval(p::NakedPoints) = p.interval
+size(p::NakedPoints) = size(p.points)
+@inline function getindex(p::NakedPoints, i::Integer)
+    @boundscheck checkbounds(Bool, p.points, i) || throw(BoundsError(p, i))
+    NakedPoint(@inbounds p.points[i])
+end
 
 function NakedPoints(
     points::A, interval::I, check::Bool = true
@@ -168,6 +176,14 @@ function VariablePoints(
     end
     VariablePoints(ps, mks, args...)
 end
+size(p::VariablePoints) = size(nakedpoints(p))
+
+@inline function getindex(p::VariablePoints, i::Integer)
+    @boundscheck if !checkbounds(Bool, p.nakedpoints.points, i)
+        throw(BoundsError(p, i))
+    end
+    MarkedPoint(@inbounds(p.nakedpoints.points[i]), @inbounds(p.marks[i]))
+end
 
 function show(io::IO, ::MIME"text/plain", pts::T) where T<:VariablePoints
     println(io, T, " points defined on interval ", bounds(pts), ":")
@@ -234,6 +250,16 @@ function SubPoints(points::SubPoints, i::Interval)
         throw(ArgumentError("Sub interval is not contained in the parent interval"))
     end
     SubPoints(points.points, i)
+end
+
+size(spp::SubPoints) = (count(spp),)
+@inline function getindex(spp::SubPoints, i::Integer)
+    ib = searchsortedfirst(spp.points, bounds(spp)[1])
+    @boundscheck ib > length(spp.points) && throw(BoundsError(spp, i))
+    @boundscheck if !checkbounds(Bool, nakedvalues(spp.points), i)
+        throw(BoundsError(spp, i))
+    end
+    @inbounds spp.points[i + ib - 1]
 end
 
 function maybe_subpoints(points::Points, i::Interval)
