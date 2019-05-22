@@ -1,5 +1,8 @@
 abstract type Point{E} end # must have point field
 
+isless(pt::Point, n::Number) = isless(nakedpointvalue(pt), n)
+isless(n::Number, pt::Point) = isless(n, nakedpointvalue(pt))
+
 struct NakedPoint{E} <: Point{E}
     point::E
 end
