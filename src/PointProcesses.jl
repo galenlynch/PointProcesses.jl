@@ -71,6 +71,7 @@ export
     mask_events,
     midpoint,
     interval_intersections,
+    interval_intersections_subpoints,
     nakedinterval,
     nakedvalues,
     nakedpointvalue,

@@ -320,6 +320,33 @@ function show(pts::SubPoints)
     )
 end
 
+function interval_intersections_subpoints(
+    points::AbstractVector{P}, intervals::AbstractVector{<:Interval{E}}
+) where {E, M, P<:Points{E, 1, <:Any, M}}
+    intervals_are_ordered(bounds, points) || error("points not well ordered")
+    intervals_are_ordered(bounds, intervals) || error("intervals not well ordered")
+    na = length(points)
+    nb = length(intervals)
+    outs = Vector{SubPoints{E,M,NakedInterval{E},P}}(undef, max(na, nb))
+    nout = 0
+    ib = 1
+    @inbounds for pts in points
+        ab, ae = bounds(pts)
+        while ib <= nb && bounds(intervals[ib])[2] <= ab
+            ib += 1
+        end
+        ib > nb && break
+        icheck = ib
+        while icheck <= nb && bounds(intervals[icheck])[1] < ae
+            nout += 1
+            outs[nout] = maybe_subpoints(pts, intervals[icheck])
+            icheck += 1
+        end
+    end
+    clipsize!(outs, nout)
+    outs
+end
+
 function pp_downsamp(
     p::Points{E, 1, <:Any, M},
     b,
