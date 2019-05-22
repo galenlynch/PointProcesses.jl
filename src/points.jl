@@ -92,8 +92,13 @@ end
 validate_interval(int::NTuple{2, Number}) = int[2] >= int[1]
 validate_interval(i::Interval) = validate_interval(bounds(i))
 
+function points_show_repl_preamble(io::IO, pts::T) where T<:Points
+    println(
+        io, length(pts), "–point ", T, " defined on interval ", bounds(pts), ":"
+    )
+end
 function show(io::IO, ::MIME"text/plain", pts::T) where T<:NakedPoints
-    println(io, T, " points defined on interval ", bounds(pts), ":")
+    points_show_repl_preamble(io, pts)
     print(io, "    ", point_values(pts))
 end
 
@@ -193,7 +198,7 @@ size(p::VariablePoints) = size(nakedpoints(p))
 end
 
 function show(io::IO, ::MIME"text/plain", pts::T) where T<:VariablePoints
-    println(io, T, " points defined on interval ", bounds(pts), ":")
+    points_show_repl_preamble(io, pts)
     println(io, "  points: ", point_values(pts.nakedpoints))
     println(io, "   marks: ", pts.marks)
 end
@@ -299,6 +304,20 @@ function nakedpoints(spp::SubPoints)
 end
 
 point_values(spp::SubPoints) = point_values(spp.points, bounds(spp.interval)...)
+
+function show(io::IO, ::MIME"text/plain", pts::T) where T<:SubPoints
+    points_show_repl_preamble(io, pts)
+    print(io, "    ", pts)
+end
+
+function show(pts::SubPoints)
+    if get(io, :typeinfo, T) != T
+        print(io, T)
+    end
+    print(
+        io, "(", bounds(pts), ',', collect(zip(point_values(pts)...)), ')'
+    )
+end
 
 function pp_downsamp(
     p::Points{E, 1, <:Any, M},

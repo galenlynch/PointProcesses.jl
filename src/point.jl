@@ -4,11 +4,23 @@ struct NakedPoint{E} <: Point{E}
     point::E
 end
 
+function show(io::IO, pt::T) where T<:NakedPoint
+    get(io, :typeinfo, nothing) != T && print(io, T)
+    print(io, pt.point)
+end
+
+nakedpointvalue(pt::NakedPoint) = pt.point
+
 point_values(pts::AbstractVector{<:NakedPoint}) = getfield.(pts, :point)
 
 struct MarkedPoint{E, M} <: Point{E}
     point::E
     mark::M
+end
+
+function show(io::IO, pt::T) where T<:MarkedPoint
+    get(io, :typeinfo, nothing) != T && print(io, T)
+    print(io, '(', pt.point, ", ", pt.mark, ')')
 end
 
 function point_values(pts::AbstractVector{MarkedPoint{E, M}}) where {E, M}
