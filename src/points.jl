@@ -22,7 +22,8 @@ bounds(p::Points) = bounds(interval(p))
 function points(p::Points{<:Any, <:Any, <:Any, M}, args...) where M
     M.(point_values(p, args...)...)
 end
-nakedvalues(p::Points) = point_values(nakedpoints(p))
+nakedvalues(p::Points, b, e) = point_values(nakedpoints(p), b, e)
+nakedvalues(p::Points) = nakedvalues(p, bounds(p)...)
 
 # I do not check, nor require, that points are strictly increasing
 struct NakedPoints{
@@ -115,7 +116,6 @@ point_values(p::NakedPoints) = p.points
 points(p::NakedPoints, args...) = NakedPoint.(point_values(p, args...))
 
 nakedpoints(p::NakedPoints) = p
-nakedpoints(p::Points) = p.nakedpoints
 
 function translate(p::NakedPoints, offset)
     rb, re = bounds(p)
@@ -284,6 +284,11 @@ function point_values(spp::SubPoints, b, e)
         res = point_values(spp.points, int_int...)
     end
     res
+end
+
+function nakedpoints(spp::SubPoints)
+    vals = nakedvalues(spp.points, bounds(spp)...)
+    NakedPoints(vals, spp.interval)
 end
 
 point_values(spp::SubPoints) = point_values(spp.points, bounds(spp.interval)...)
