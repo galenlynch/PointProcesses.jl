@@ -26,6 +26,8 @@ function show(io::IO, pt::T) where T<:MarkedPoint
     print(io, '(', pt.point, ", ", pt.mark, ')')
 end
 
+nakedpointvalue(pt::MarkedPoint) = pt.point
+
 function point_values(pts::AbstractVector{MarkedPoint{E, M}}) where {E, M}
     np = length(pts)
     @compat pnt_vals = Vector{E}(undef, np)

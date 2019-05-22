@@ -73,6 +73,8 @@ export
     interval_intersections,
     nakedinterval,
     nakedvalues,
+    nakedpointvalue,
+    nakedpoints,
     translate
 
 include("point.jl")

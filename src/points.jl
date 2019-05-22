@@ -212,6 +212,7 @@ function show(io::IO, pts::T) where T<:VariablePoints
     )
 end
 
+nakedpoints(p::VariablePoints) = p.nakedpoints
 
 function point_values(mp::VariablePoints, tb, te)
     pp = nakedpoints(mp)
