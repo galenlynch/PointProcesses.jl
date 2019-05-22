@@ -201,13 +201,13 @@ function show(io::IO, pts::T) where T<:VariablePoints
 end
 
 
-function point_values(mp::MarkedPoints, ib, ie)
+function point_values(mp::VariablePoints, tb, te)
     pp = nakedpoints(mp)
-    ib, ie = point_range(pp, ib, ie)
+    ib, ie = point_range(pp, tb, te)
     view(pp.points, ib:ie), view(mp.marks, ib:ie)
 end
 
-point_values(mp::MarkedPoints) = nakedpoints(mp).points, mp.marks
+point_values(mp::VariablePoints) = nakedpoints(mp).points, mp.marks
 
 translate(mp::VariablePoints, offset) = VariablePoints(
     translate(nakedpoints(mp), offset), mp.marks
