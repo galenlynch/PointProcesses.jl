@@ -13,7 +13,14 @@ setindex!(::Points) = throw(ReadOnlyMemoryError())
 
 rate(p::Points) = count(p) / duration(p)
 rate(p::Points, b, e) = count(p, b, e) / (e - b)
-rate(ps::AbstractVector{<:Points}) = sum(count, ps) / sum(duration, ps)
+function rate(ps::AbstractVector{<:Points})
+    if isempty(ps)
+        nothing
+    else
+        sum(count, ps) / sum(duration, ps)
+    end
+end
+
 interval(p::Points) = interval(nakedpoints(p))
 measure(p::Points) = measure(interval(p))
 duration(p::Points) = measure(p)
