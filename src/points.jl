@@ -320,6 +320,10 @@ function show(pts::SubPoints)
     )
 end
 
+subpoint_type(::Type{P}) where {E, M, P<:Points{E, 1, <:Any, M}} =
+    SubPoints{E,M,NakedInterval{E},P}
+subpoint_type(::Type{P}) where {P<:SubPoints} = P
+
 function interval_intersections_subpoints(
     points::AbstractVector{P}, intervals::AbstractVector{<:Interval{E}}
 ) where {E, M, P<:Points{E, 1, <:Any, M}}
@@ -327,7 +331,7 @@ function interval_intersections_subpoints(
     intervals_are_ordered(bounds, intervals) || error("intervals not well ordered")
     na = length(points)
     nb = length(intervals)
-    outs = Vector{SubPoints{E,M,NakedInterval{E},P}}(undef, max(na, nb))
+    outs = Vector{subpoint_type(P)}(undef, max(na, nb))
     nout = 0
     ib = 1
     @inbounds for pts in points
