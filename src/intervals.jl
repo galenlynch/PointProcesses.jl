@@ -198,10 +198,32 @@ function complement(dom::Interval{E}, ints::AbstractVector{<:Interval}) where E
     out
 end
 
-# Assumes sorted by onset
+function cut_levels!(end_heap, out, b, bn, level, outno)
+    last_end = b
+    while level > 0 && top(end_heap) <= bn
+        outno += 1
+        ef = pop!(end_heap)
+        out[outno] = MarkedInterval(last_end, ef, level)
+        level -= 1
+        while level > 0 && top(end_heap) == ef
+            pop!(end_heap)
+            level -= 1
+        end
+        last_end = ef
+    end
+    outno += 1
+    out[outno] = MarkedInterval(last_end, bn, level)
+    level, outno
+end
+
+"""
+    interval_levels(intervals::AbstractVector{<:Interval{E, 1}}) where E
+
+Find the "depth" of interval overlap for some intervals. Assumes sorted by onset.
+"""
 function interval_levels(intervals::AbstractVector{<:Interval{E, 1}}) where E
     nint = length(intervals)
-    end_heap = binary_minheap(E)
+    end_heap = BinaryMinHeap{E}()
     out = Vector{MarkedInterval{E, Int}}(undef, 2 * (nint - 1) + 2)
     outno = 0
     level = 0
@@ -219,24 +241,6 @@ function interval_levels(intervals::AbstractVector{<:Interval{E, 1}}) where E
     outno -= 1
     resize!(out, outno)
     out
-end
-
-function cut_levels!(end_heap, out, b, bn, level, outno)
-    last_end = b
-    while level > 0 && top(end_heap) <= bn
-        outno += 1
-        out[outno] = MarkedInterval(last_end, top(end_heap), level)
-        ef = pop!(end_heap)
-        level -= 1
-        while level > 0 && top(end_heap) == ef
-            pop!(end_heap)
-            level -= 1
-        end
-        last_end = ef
-    end
-    outno += 1
-    out[outno] = MarkedInterval(last_end, bn, level)
-    level, outno
 end
 
 """
