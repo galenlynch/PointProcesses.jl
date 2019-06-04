@@ -21,6 +21,7 @@ function rate(ps::AbstractVector{<:Points})
     end
 end
 
+nakedinterval(p::Points) = nakedinterval(interval(p))
 interval(p::Points) = interval(nakedpoints(p))
 measure(p::Points) = measure(interval(p))
 duration(p::Points) = measure(p)
@@ -351,6 +352,17 @@ function interval_intersections_subpoints(
     outs
 end
 
+function points_intersects(
+    pts1::AbstractVector{<:Points}, pts2::AbstractVector{<:Points}
+)
+    ints1 = interval.(pts1)
+    ints2 = interval.(pts2)
+    newints = interval_intersections(ints1, ints2)
+    newpts1 = interval_intersections_subpoints(pts1, newints)
+    newpts2 = interval_intersections_subpoints(pts2, newints)
+    return (newpts1, newpts2)
+end
+
 function pp_downsamp(
     p::Points{E, 1, <:Any, M},
     b,
@@ -413,4 +425,48 @@ function pop_marks(p::VariablePoints)
     pt_vals, mark_vals = point_values(p)
     popped_marks = map(m -> m[2], mark_vals)
     VariablePoints(pt_vals, popped_marks, interval(p))
+end
+
+function join_points(pt::Points{<:Any, <:Any, <:Any, P}) where P<:NakedPoint
+    newint = nakedinterval(pt)
+    NakedPoints(collect(point_values(pt)), newint)
+end
+
+function join_points(pt::Points{<:Any, <:Any, <:Any, P}) where P<:MarkedPoint
+    newint = nakedinterval(pt)
+    VariablePoints(collect.(point_values(pt))..., newint)
+end
+
+function join_points(
+    pt1::Points{<:Any, <:Any, <:Any, P},
+    pt2::Points{<:Any, <:Any, <:Any, P}
+) where P<:NakedPoint
+    newbnds = overlap_interval_union(bounds(pt1), bounds(pt2))
+    newint = NakedInterval(newbnds)
+    newvals = sort!(vcat(point_values(pt1), point_values(pt2)))
+    NakedPoints(newvals, newint)
+end
+
+function join_points(
+    pt1::Points{<:Any, <:Any, <:Any, P},
+    pt2::Points{<:Any, <:Any, <:Any, P}
+) where P<:MarkedPoint
+    newbnds = overlap_interval_union(bounds(pt1), bounds(pt2))
+    newint = NakedInterval(newbnds)
+    times1, marks1 = point_values(pt1)
+    times2, marks2 = point_values(pt2)
+    newtimes = vcat(times1, times2)
+    sp = sortperm(newtimes)
+    newtimes = newtimes[sp]
+    newmarks = vcat(marks1, marks2)[sp]
+    VariablePoints(newtimes, newmarks, newint)
+end
+
+function join_points(
+    pt1::Points{<:Any, <:Any, <:Any, P},
+    pt2::Points{<:Any, <:Any, <:Any, P},
+    pts::Vararg{<:Points{<:Any, <:Any, <:Any, P}},
+) where P<:Point
+    newpts = join_points(pt1, pt2)
+    join_points(newpts, pts...)
 end
