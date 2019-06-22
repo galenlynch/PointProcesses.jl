@@ -9,7 +9,8 @@ import Base:
     setindex!,
     IndexStyle,
     @propagate_inbounds,
-    isless
+    isless,
+    in
 
 import GLUtilities:
     duration,
@@ -22,7 +23,8 @@ import GLUtilities:
     mask_events,
     intervals_diff,
     midpoint,
-    interval_intersections
+    interval_intersections,
+    maximum_interval_overlap
 
 using Compat, GLUtilities, DataStructures
 
@@ -69,6 +71,7 @@ export
     join_points,
     chunk,
     shrink,
+    shift_interval,
     subinterval,
     mask_events,
     midpoint,

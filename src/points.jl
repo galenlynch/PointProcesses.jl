@@ -189,7 +189,10 @@ function VariablePoints(
     end
     VariablePoints(ps, mks, args...)
 end
+
 size(p::VariablePoints) = size(nakedpoints(p))
+
+get_mark(p::VariablePoints) = p.marks
 
 @inline function getindex(p::VariablePoints, i::Integer)
     @boundscheck if !checkbounds(Bool, p.nakedpoints.points, i)
@@ -264,6 +267,11 @@ function SubPoints(points::SubPoints, i::Interval)
         throw(ArgumentError("Sub interval is not contained in the parent interval"))
     end
     SubPoints(points.points, i)
+end
+
+function get_mark(spp::SubPoints{<:Any, <:Any, <:Any, <:MarkedPoints})
+    np, nv = point_values(spp.points, bounds(spp)...)
+    nv
 end
 
 size(spp::SubPoints) = (count(spp),)

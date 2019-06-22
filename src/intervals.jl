@@ -1,6 +1,11 @@
 # Must be well ordered, and support bounds and measure functions
 abstract type Interval{E, N} end
 
+function in(x, m::Interval)
+    b, e = bounds(m)
+    (x >= b) & (x <= e)
+end
+
 function midpoint(m::Interval)
     b, e = bounds(m)
     b + (e - b) / 2
@@ -309,3 +314,14 @@ end
 function intervals_diff(a_ints, b_ints::AbstractVector{<:Interval})
     NakedInterval.(intervals_diff(a_ints, map(i -> bounds(i), b_ints)))
 end
+
+function maximum_interval_overlap(xs::AbstractVector{<:Interval}, y::Interval)
+    maximum_interval_overlap(bounds.(xs), bounds(y))
+end
+
+shift_interval(a::NakedInterval, offset::Number) =
+    NakedInterval(bounds(a) .+ offset)
+shift_interval(a::MarkedInterval, offset::Number) =
+    MarkedInterval(bounds(a) .+ offset, get_mark(a))
+
+shift_interval(offset::Number) = (a::Interval) -> shift_interval(a, offset)
