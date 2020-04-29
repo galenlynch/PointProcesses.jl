@@ -276,6 +276,7 @@ end
 
 size(spp::SubPoints) = (count(spp),)
 @inline function getindex(spp::SubPoints, i::Integer)
+    @boundscheck checkbounds(spp, i)
     ib = searchsortedfirst(spp.points, bounds(spp)[1])
     @boundscheck ib > length(spp.points) && throw(BoundsError(spp, i))
     @boundscheck if !checkbounds(Bool, nakedvalues(spp.points), i)

@@ -154,6 +154,7 @@ function complement!(
     ib, ie = bounds(int)
     if check_overlap(db, de, ib, ie)
         if ib > db
+            # Has to be in dom because there is overlap
             out[pos] = NakedInterval(db, ib)
             if ie < de
                 out[pos + 1] = NakedInterval(ie, de)
@@ -184,6 +185,10 @@ function complement(dom::Interval{E}, ints::AbstractVector{<:Interval}) where E
     nint = length(ints)
     maxint = nint + 1
     out = Vector{NakedInterval{E}}(undef, maxint)
+    if nint == 0
+        @inbounds out[1] = dom
+        return out
+    end
     outno = 0
     rem_dom = dom
     db, de = bounds(dom)
