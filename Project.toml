@@ -1,7 +1,7 @@
 name = "PointProcesses"
 uuid = "1751c77c-d90c-5130-9faa-3b4ea8d90a70"
 authors = ["Galen Lynch <galen.lynch@gmail.com>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
@@ -12,6 +12,6 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 Compat = "1 - 3"
-GLUtilities = "0.0.5 - 0.1"
+GLUtilities = "0.0.5 - 0.2"
 julia = "0.6 - 1"
 DataStructures = "0.15 - 0.17"
