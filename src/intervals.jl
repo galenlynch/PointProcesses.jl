@@ -1,5 +1,5 @@
 # Must be well ordered, and support bounds and measure functions
-abstract type Interval{E, N} end
+abstract type Interval{E,N} end
 
 function in(x, m::Interval)
     b, e = bounds(m)
@@ -21,7 +21,8 @@ end
 
 # Requires inputs to be well ordered
 function interval_intersections(
-    a::AbstractVector{<:Interval}, b::AbstractVector{<:Interval}
+    a::AbstractVector{<:Interval},
+    b::AbstractVector{<:Interval},
 )
     NakedInterval.(interval_intersections(bounds.(a), bounds.(b)))
 end
@@ -35,8 +36,8 @@ function is_subinterval(m::Interval, parent::Interval)
     is_subinterval(bm, em, bp, ep)
 end
 
-struct NakedInterval{D<:Number} <: Interval{D, 1}
-    interval::NTuple{2, D}
+struct NakedInterval{D<:Number} <: Interval{D,1}
+    interval::NTuple{2,D}
 end
 NakedInterval(a, b) = NakedInterval(promote(a, b))
 
@@ -44,7 +45,7 @@ bounds(m::NakedInterval) = m.interval
 
 nakedinterval(m::NakedInterval) = m
 
-function subinterval(int::Interval{E, 1}, sub::NakedInterval{E}) where E
+function subinterval(int::Interval{E,1}, sub::NakedInterval{E}) where {E}
     if ! is_subinterval(sub, int)
         throw(ArgumentError("Not a subinterval"))
     end
@@ -53,11 +54,11 @@ end
 
 _subinterval(::NakedInterval, sub::NakedInterval) = sub
 
-struct MarkedInterval{D<:Number, M} <: Interval{D, 1}
+struct MarkedInterval{D<:Number,M} <: Interval{D,1}
     interval::NakedInterval{D}
     mark::M
 end
-MarkedInterval(t::NTuple{2, <:Number}, m) = MarkedInterval(NakedInterval(t), m)
+MarkedInterval(t::NTuple{2,<:Number}, m) = MarkedInterval(NakedInterval(t), m)
 MarkedInterval(a, b, m) = MarkedInterval(NakedInterval(a, b), m)
 
 nakedinterval(m::MarkedInterval) = m.interval
@@ -68,7 +69,7 @@ get_mark(m::MarkedInterval) = m.mark
 
 _subinterval(m::MarkedInterval, s::NakedInterval) = MarkedInterval(s, get_mark(m))
 
-struct RelativeInterval{D<:Number, I<:Interval{D}, J<:Interval{D}} <: Interval{D, 1}
+struct RelativeInterval{D<:Number,I<:Interval{D},J<:Interval{D}} <: Interval{D,1}
     reference_interval::I
     anchored_left::Bool
     this_interval::J
@@ -94,11 +95,9 @@ end
 # intervals must be contiguous
 # They must also be ordered
 # Cannot be empty
-struct IntervalSet{E, T<:NTuple{<:Any, Interval{E, 1}}} <: Interval{E, 1}
+struct IntervalSet{E,T<:NTuple{<:Any,Interval{E,1}}} <: Interval{E,1}
     intervals::T
-    function IntervalSet{E, T}(
-        intervals::T
-    ) where {E, T<:NTuple{<:Any, Interval{E}}}
+    function IntervalSet{E,T}(intervals::T) where {E,T<:NTuple{<:Any,Interval{E}}}
         nint = length(intervals)
         length(nint) > 0 || throw(ArgumentError("Must not be empty"))
         last_e = bounds(intervals[1])[2]
@@ -113,8 +112,8 @@ struct IntervalSet{E, T<:NTuple{<:Any, Interval{E, 1}}} <: Interval{E, 1}
     end
 end
 
-function IntervalSet(intervals::T) where {E, T<:NTuple{<:Any, Interval{E, 1}}}
-    IntervalSet{E, T}(intervals)
+function IntervalSet(intervals::T) where {E,T<:NTuple{<:Any,Interval{E,1}}}
+    IntervalSet{E,T}(intervals)
 end
 IntervalSet(i::Vararg{<:Interval}) = IntervalSet(i)
 IntervalSet(i::AbstractVector{<:Interval}) = IntervalSet(Tuple(i))
@@ -127,19 +126,18 @@ function get_mark(i::IntervalSet)
     get_mark(i.intervals[marked_int_no])
 end
 
-function bounds(i::IntervalSet{E, <:Any}) where E
-    (bounds(i.intervals[1])[1], bounds(i.intervals[end])[2])::NTuple{2, E}
+function bounds(i::IntervalSet{E,<:Any}) where {E}
+    (bounds(i.intervals[1])[1], bounds(i.intervals[end])[2])::NTuple{2,E}
 end
 
-function _subinterval(m::IntervalSet{<:Any, T}, s::NakedInterval) where T
+function _subinterval(m::IntervalSet{<:Any,T}, s::NakedInterval) where {T}
     overlap_idxs = findall(int -> check_overlap(int, s), m.intervals)
     noverlap = length(overlap_mask)
     j_type = reduce(typejoin, T.parameters[overlap_idxs])
     new_ints = Vector{j_type}(undef, noverlap)
     for (i, int_idx) in enumerate(overlap_idxs)
-        new_ints[i] = _subinterval(
-            m.intervals[int_idx], interval_intersect(m.intervals[int_idx], s)
-        )
+        new_ints[i] =
+            _subinterval(m.intervals[int_idx], interval_intersect(m.intervals[int_idx], s))
     end
     IntervalSet(Tuple(new_ints))
 end
@@ -148,8 +146,8 @@ function complement!(
     out::AbstractVector{NakedInterval{E}},
     dom::Interval{E},
     int::Interval,
-    pos::Integer = 1
-) where E
+    pos::Integer = 1,
+) where {E}
     db, de = bounds(dom)
     ib, ie = bounds(int)
     if check_overlap(db, de, ib, ie)
@@ -157,7 +155,7 @@ function complement!(
             # Has to be in dom because there is overlap
             out[pos] = NakedInterval(db, ib)
             if ie < de
-                out[pos + 1] = NakedInterval(ie, de)
+                out[pos+1] = NakedInterval(ie, de)
                 nout = 2
             else
                 nout = 1
@@ -175,13 +173,13 @@ function complement!(
     nout
 end
 
-function complement(dom::Interval{E}, int::Interval) where E
+function complement(dom::Interval{E}, int::Interval) where {E}
     out = Vector{NakedInterval{E}}(undef, 2)
     i = complement!(out, dom, int)
     resize!(out, i)
 end
 
-function complement(dom::Interval{E}, ints::AbstractVector{<:Interval}) where E
+function complement(dom::Interval{E}, ints::AbstractVector{<:Interval}) where {E}
     nint = length(ints)
     maxint = nint + 1
     out = Vector{NakedInterval{E}}(undef, maxint)
@@ -231,17 +229,17 @@ end
 
 Find the "depth" of interval overlap for some intervals. Assumes sorted by onset.
 """
-function interval_levels(intervals::AbstractVector{<:Interval{E, 1}}) where E
+function interval_levels(intervals::AbstractVector{<:Interval{E,1}}) where {E}
     nint = length(intervals)
     end_heap = BinaryMinHeap{E}()
-    out = Vector{MarkedInterval{E, Int}}(undef, 2 * (nint - 1) + 2)
+    out = Vector{MarkedInterval{E,Int}}(undef, 2 * (nint - 1) + 2)
     outno = 0
     level = 0
-    for i = 1:(nint - 1)
+    for i = 1:(nint-1)
         b, e = bounds(intervals[i])
         push!(end_heap, e)
         level += 1
-        bn = bounds(intervals[i + 1])[1]
+        bn = bounds(intervals[i+1])[1]
         if b < bn
             level, outno = cut_levels!(end_heap, out, b, bn, level, outno)
         end
@@ -260,9 +258,7 @@ Break an interval, `int` into smaller chunks of length `chunk_len`. If `exact`
 is `true`, then any remainder of `int` will be dropped. Otherwise, the last
 chunk may not be of measure `chunk_len`.
 """
-function chunk(
-    int::Interval{E, 1}, chunk_len::E, exact::Bool = false
-) where E
+function chunk(int::Interval{E,1}, chunk_len::E, exact::Bool = false) where {E}
     chunk_len > 0 || throw(ArgumentError("chunk_len must be positive"))
     m = measure(int)
     b, e = bounds(int)
@@ -290,10 +286,8 @@ function shrink(ints::AbstractVector{<:Interval}, shrink_measure)
     adj_shrink = shrink_measure / 2
     for (outno, intno) in enumerate(survivors)
         b, e = bounds(ints[intno])
-        out[outno] = _subinterval(
-            ints[intno],
-            NakedInterval(b + adj_shrink, e - adj_shrink)
-        )
+        out[outno] =
+            _subinterval(ints[intno], NakedInterval(b + adj_shrink, e - adj_shrink))
     end
     out
 end
@@ -324,8 +318,7 @@ function maximum_interval_overlap(xs::AbstractVector{<:Interval}, y::Interval)
     maximum_interval_overlap(bounds.(xs), bounds(y))
 end
 
-shift_interval(a::NakedInterval, offset::Number) =
-    NakedInterval(bounds(a) .+ offset)
+shift_interval(a::NakedInterval, offset::Number) = NakedInterval(bounds(a) .+ offset)
 shift_interval(a::MarkedInterval, offset::Number) =
     MarkedInterval(bounds(a) .+ offset, get_mark(a))
 

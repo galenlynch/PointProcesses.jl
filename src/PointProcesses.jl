@@ -2,15 +2,7 @@ __precompile__()
 module PointProcesses
 
 import Base:
-    count,
-    show,
-    size,
-    getindex,
-    setindex!,
-    IndexStyle,
-    @propagate_inbounds,
-    isless,
-    in
+    count, show, size, getindex, setindex!, IndexStyle, @propagate_inbounds, isless, in
 
 import GLUtilities:
     duration,
