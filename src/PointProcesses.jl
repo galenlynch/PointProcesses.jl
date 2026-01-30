@@ -2,15 +2,7 @@ __precompile__()
 module PointProcesses
 
 import Base:
-    count,
-    show,
-    size,
-    getindex,
-    setindex!,
-    IndexStyle,
-    @propagate_inbounds,
-    isless,
-    in
+    count, show, size, getindex, setindex!, IndexStyle, isless, in
 
 import GLUtilities:
     duration,
@@ -26,11 +18,9 @@ import GLUtilities:
     interval_intersections,
     maximum_interval_overlap
 
-using Compat, GLUtilities, DataStructures
-
-@static if VERSION >= v"0.7.0-DEV.2575"
-    using Statistics
-end
+using DataStructures: DataStructures, BinaryMinHeap, top
+using GLUtilities: GLUtilities, clipsize!, intervals_are_ordered, n_ndx, overlap_interval_union
+using Statistics: Statistics, mean
 
 export
     # Types
