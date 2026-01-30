@@ -115,7 +115,7 @@ end
 function IntervalSet(intervals::T) where {E,T<:NTuple{<:Any,Interval{E,1}}}
     IntervalSet{E,T}(intervals)
 end
-IntervalSet(i::Vararg{<:Interval}) = IntervalSet(i)
+IntervalSet(i::Vararg{Interval}) = IntervalSet(i)
 IntervalSet(i::AbstractVector{<:Interval}) = IntervalSet(Tuple(i))
 
 measure(i::IntervalSet) = sum(measure, i.intervals)

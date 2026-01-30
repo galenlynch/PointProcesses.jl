@@ -18,7 +18,6 @@ import GLUtilities:
     interval_intersections,
     maximum_interval_overlap
 
-using Compat: Compat, @compat
 using DataStructures: DataStructures, BinaryMinHeap, top
 using GLUtilities: GLUtilities, clipsize!, intervals_are_ordered, n_ndx, overlap_interval_union
 using Statistics: Statistics, mean

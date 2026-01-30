@@ -30,8 +30,8 @@ nakedpointvalue(pt::MarkedPoint) = pt.point
 
 function point_values(pts::AbstractVector{MarkedPoint{E,M}}) where {E,M}
     np = length(pts)
-    @compat pnt_vals = Vector{E}(undef, np)
-    @compat marks = Vector{M}(undef, np)
+    pnt_vals = Vector{E}(undef, np)
+    marks = Vector{M}(undef, np)
     @inbounds for (i, p) in enumerate(pts)
         pnt_vals[i] = p.point
         marks[i] = p.mark

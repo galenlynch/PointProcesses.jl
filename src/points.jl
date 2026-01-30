@@ -174,8 +174,8 @@ end
 
 function VariablePoints(pts::AbstractVector{<:MarkedPoint{E,M}}, args...) where {E,M}
     np = length(pts)
-    @compat ps = Vector{E}(undef, np)
-    @compat mks = Vector{M}(undef, np)
+    ps = Vector{E}(undef, np)
+    mks = Vector{M}(undef, np)
     @inbounds @simd for i = 1:np
         ps[i] = pts[i].point
         mks[i] = pts[i].mark
@@ -282,12 +282,12 @@ interval(spp::SubPoints) = spp.interval
 count(spp::SubPoints) = count(spp.points, bounds(interval(spp))...)
 
 function count(spp::SubPoints, b, e)
-    int_int = interval_intersect(bounds(interval(spp.interval))..., b, e)
+    int_int = interval_intersect(bounds(spp.interval)..., b, e)
     int_int == nothing ? zero(b) : count(spp.points, int_int...)
 end
 
 function point_values(spp::SubPoints, b, e)
-    int_int = interval_intersect(bounds(interval(spp.interval))..., b, e)
+    int_int = interval_intersect(bounds(spp.interval)..., b, e)
     if int_int == nothing
         res = points_values(spp.points, 1, 0)
     else
@@ -366,7 +366,7 @@ function pp_downsamp(
 ) where {E,M,RetType}
     pnts = points(p, b, e)
     np = length(pnts)
-    @compat downsamped_points = Vector{push_mark_type(RetType, Int)}(undef, np)
+    downsamped_points = Vector{push_mark_type(RetType, Int)}(undef, np)
     out_idx = 0
     @inbounds if np > 0
         range_st = 1
@@ -456,7 +456,7 @@ end
 function join_points(
     pt1::Points{<:Any,<:Any,<:Any,P},
     pt2::Points{<:Any,<:Any,<:Any,P},
-    pts::Vararg{<:Points{<:Any,<:Any,<:Any,P}},
+    pts::Vararg{Points{<:Any,<:Any,<:Any,P}},
 ) where {P<:Point}
     newpts = join_points(pt1, pt2)
     join_points(newpts, pts...)
