@@ -76,6 +76,6 @@ jobs:
         shell: julia --project=docs --color=yes {0}
         run: |
           using Documenter: DocMeta, doctest
-          using PointProcesses
-          DocMeta.setdocmeta!(PointProcesses, :DocTestSetup, :(using PointProcesses); recursive=true)
-          doctest(PointProcesses)
+          using EventIntervals
+          DocMeta.setdocmeta!(EventIntervals, :DocTestSetup, :(using EventIntervals); recursive=true)
+          doctest(EventIntervals)

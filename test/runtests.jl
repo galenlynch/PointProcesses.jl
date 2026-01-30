@@ -1,10 +1,10 @@
-using PointProcesses
+using EventIntervals
 using Random
 using Test
 
 const srand = Random.seed!
 
-@testset "PointProcesses" begin
+@testset "EventIntervals" begin
     pp_testarr = [1, 2, 3]
     pp_notshuff_arr = [2, 1, 3]
     interval = (0, 5)

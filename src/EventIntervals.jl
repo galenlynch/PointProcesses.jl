@@ -1,5 +1,5 @@
 __precompile__()
-module PointProcesses
+module EventIntervals
 
 import Base:
     count, show, size, getindex, setindex!, IndexStyle, isless, in

@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = PointProcesses
+CurrentModule = EventIntervals
 ```
 
-# PointProcesses
+# EventIntervals
 
-Documentation for [PointProcesses](https://github.com/galenlynch/PointProcesses.jl).
+Documentation for [EventIntervals](https://github.com/galenlynch/EventIntervals.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [PointProcesses]
+Modules = [EventIntervals]
 ```
