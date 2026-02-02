@@ -48,4 +48,30 @@ const srand = Random.seed!
         pt_extent_merge,
         MarkedPoint{Float64,Tuple{Float64,Float64}},
     )
+    @testset "chunk vector" begin
+        ints = [NakedInterval(0.0, 3.0), NakedInterval(5.0, 8.0)]
+        chunks = chunk(ints, 1.0, true)
+        @test length(chunks) == 6
+        @test all(c -> measure(c) ≈ 1.0, chunks)
+        # empty input
+        @test chunk(NakedInterval{Float64}[], 1.0) == NakedInterval{Float64}[]
+        # exact drops remainder
+        chunks_exact = chunk([NakedInterval(0.0, 2.5)], 1.0, true)
+        @test length(chunks_exact) == 2
+        # inexact: remainder included
+        chunks_inexact = chunk([NakedInterval(0.0, 2.5)], 1.0, false)
+        @test length(chunks_inexact) == 3
+    end
+
+    @testset "relative_interval Interval" begin
+        ref = NakedInterval(5.0, 15.0)
+        int = NakedInterval(7.0, 12.0)
+        ri = relative_interval(int, ref)
+        @test bounds(ri) == (2.0, 7.0)
+        # tuple/Interval mixed dispatch
+        ri2 = relative_interval(int, (5.0, 15.0))
+        @test bounds(ri2) == (2.0, 7.0)
+        ri3 = relative_interval((7.0, 12.0), ref)
+        @test bounds(ri3) == (2.0, 7.0)
+    end
 end

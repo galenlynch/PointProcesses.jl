@@ -14,7 +14,8 @@ import SortedIntervals:
     maximum_interval_overlap,
     mask_events,
     intervals_diff,
-    midpoint
+    midpoint,
+    relative_interval
 
 import SignalIndices:
     time_interval,
@@ -76,7 +77,8 @@ export
     nakedvalues,
     nakedpointvalue,
     nakedpoints,
-    translate
+    translate,
+    relative_interval
 
 include("point.jl")
 include("intervals.jl")

@@ -272,6 +272,46 @@ function chunk(int::Interval{E,1}, chunk_len::E, exact::Bool = false) where {E}
     out
 end
 
+"""
+    chunk(intervals::AbstractVector{<:Interval{E,1}}, chunk_len::E, exact::Bool=true) where E
+
+Break each interval in `intervals` into chunks of length `chunk_len` and return
+the concatenated result. See [`chunk(::Interval, ...)`](@ref) for the meaning
+of `exact`.
+"""
+function chunk(intervals::AbstractVector{<:Interval{E,1}}, chunk_len::E, exact::Bool=true) where E
+    isempty(intervals) && return NakedInterval{E}[]
+    total_dur = mapreduce(measure, +, intervals, init=zero(E))
+    div_fn = exact ? fld : cld
+    max_n_chunk = convert(Int, div_fn(total_dur, chunk_len))
+    outs = Vector{NakedInterval{E}}(undef, max_n_chunk)
+    nout = 0
+    for int in intervals
+        chunks = chunk(int, chunk_len, exact)
+        nchunk = length(chunks)
+        outs[nout+1 : nout+nchunk] = chunks
+        nout += nchunk
+    end
+    clipsize!(outs, nout)
+    outs
+end
+
+"""
+    relative_interval(interval::Interval, reference::Interval) -> NakedInterval
+
+Express `interval` in coordinates relative to `reference`. See
+[`SortedIntervals.relative_interval`](@ref) for details.
+"""
+function relative_interval(interval::Interval, reference::Interval)
+    NakedInterval(relative_interval(bounds(interval), bounds(reference)))
+end
+function relative_interval(interval::Interval, reference::NTuple{2,<:Number})
+    NakedInterval(relative_interval(bounds(interval), reference))
+end
+function relative_interval(interval::NTuple{2,<:Number}, reference::Interval)
+    NakedInterval(relative_interval(interval, bounds(reference)))
+end
+
 function shrink(int::Interval, shrink_measure)
     m = measure(int)
     adj_shrink = min(shrink_measure, m) / 2

@@ -1,6 +1,6 @@
 name = "EventIntervals"
 uuid = "1751c77c-d90c-5130-9faa-3b4ea8d90a70"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["Galen Lynch <galen@galenlynch.com>"]
 
 [deps]
@@ -13,5 +13,5 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 [compat]
 DataStructures = "0.15 - 0.19"
 SignalIndices = "0.1.1"
-SortedIntervals = "0.1"
+SortedIntervals = "0.1.2"
 julia = "1.6"
