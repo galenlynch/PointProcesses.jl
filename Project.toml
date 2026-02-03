@@ -1,6 +1,6 @@
 name = "EventIntervals"
 uuid = "1751c77c-d90c-5130-9faa-3b4ea8d90a70"
-version = "0.1.6"
+version = "0.1.7"
 authors = ["Galen Lynch <galen@galenlynch.com>"]
 
 [deps]

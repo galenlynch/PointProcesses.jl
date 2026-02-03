@@ -1,4 +1,17 @@
-__precompile__()
+"""
+    EventIntervals
+
+Interval-aware data structures for point processes. Couples timestamped event
+collections ([`Points`](@ref)) with the temporal domains ([`Interval`](@ref)) they are
+defined on, so that slicing, intersecting, downsampling, and transforming operations keep
+points and their intervals in sync.
+
+Core types come in "naked" (coordinates only) and "marked" (coordinates + metadata)
+variants: [`NakedPoint`](@ref)/[`MarkedPoint`](@ref),
+[`NakedInterval`](@ref)/[`MarkedInterval`](@ref),
+[`NakedPoints`](@ref)/[`VariablePoints`](@ref). [`SubPoints`](@ref) provides lazy,
+zero-copy views into any points collection.
+"""
 module EventIntervals
 
 import Base:
@@ -21,7 +34,7 @@ import SignalIndices:
     time_interval,
     duration
 
-using DataStructures: DataStructures, BinaryMinHeap, top
+using DataStructures: DataStructures, BinaryMinHeap
 
 using SortedIntervals: clipsize!, intervals_are_ordered, overlap_interval_union
 using SignalIndices: n_ndx
@@ -71,8 +84,14 @@ export
     subinterval,
     mask_events,
     midpoint,
+    interval_intersect,
     interval_intersections,
     interval_intersections_subpoints,
+    interval_indices,
+    intervals_diff,
+    is_subinterval,
+    check_overlap,
+    maximum_interval_overlap,
     nakedinterval,
     nakedvalues,
     nakedpointvalue,

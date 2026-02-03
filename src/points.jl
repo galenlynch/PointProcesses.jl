@@ -1,16 +1,35 @@
-# If not NakedPoints, expected to have a field "nakedpoints" that is a
-# NakedPoints or implement a nakedpoints method that will yield a
-# simple naked points
-# Alternatively, implement duration, point_range, and count
-# point_range(pts, b, e) -> (ib, ie) gives the indices of points between b, e
-# count is the number of points
-# Should also support interval function that gives underlying interval
+"""
+    Points{E,N,I<:Interval{E},T<:Point{E}} <: AbstractVector{T}
+
+Abstract supertype for read-only collections of [`Point`](@ref) values defined on an
+[`Interval`](@ref). Subtypes are [`NakedPoints`](@ref), [`VariablePoints`](@ref), and
+[`SubPoints`](@ref).
+
+`Points` implements `AbstractVector`, so indexing, iteration, and `length` work as
+expected. Assignment via `setindex!` throws `ReadOnlyMemoryError`.
+"""
 abstract type Points{E,N,I<:Interval{E},T<:Point{E}} <: AbstractVector{T} end
+
+"""
+    MarkedPoints{E,N,I,M}
+
+Type alias for `Points{E,N,I,MarkedPoint{E,M}}` — any [`Points`](@ref) collection
+whose elements are [`MarkedPoint`](@ref) values.
+"""
 const MarkedPoints{E,N,I,M} = Points{E,N,I,MarkedPoint{E,M}}
 
 IndexStyle(::Points) = IndexLinear()
-setindex!(::Points) = throw(ReadOnlyMemoryError())
+setindex!(::Points, v, i...) = throw(ReadOnlyMemoryError())
 
+"""
+    rate(p::Points) -> Number
+    rate(p::Points, b, e) -> Number
+    rate(ps::AbstractVector{<:Points}) -> Number or nothing
+
+Compute the event rate (count / duration). The two-argument form restricts the
+calculation to the range `[b, e]`. The vector form computes the aggregate rate across
+all collections, returning `nothing` if the vector is empty.
+"""
 rate(p::Points) = count(p) / duration(p)
 rate(p::Points, b, e) = count(p, b, e) / (e - b)
 function rate(ps::AbstractVector{<:Points})
@@ -22,18 +41,72 @@ function rate(ps::AbstractVector{<:Points})
 end
 
 nakedinterval(p::Points) = nakedinterval(interval(p))
+
+"""
+    interval(p::Points) -> Interval
+
+Return the domain interval on which the points collection is defined.
+"""
 interval(p::Points) = interval(nakedpoints(p))
+
 measure(p::Points) = measure(interval(p))
+
+"""
+    duration(p::Points) -> Number
+
+Return the duration (measure) of the domain interval. Equivalent to
+`measure(interval(p))`.
+"""
 duration(p::Points) = measure(p)
+
+"""
+    time_interval(p::Points) -> Interval
+
+Return the domain interval. Synonym for [`interval`](@ref).
+"""
 time_interval(p::Points) = interval(p)
+
 bounds(p::Points) = bounds(interval(p))
+
+"""
+    points(p::Points, [b, e]) -> Vector{<:Point}
+
+Materialise the [`Point`](@ref) objects from a points collection. The optional range
+`[b, e]` restricts to points within those bounds.
+"""
 function points(p::Points{<:Any,<:Any,<:Any,M}, args...) where {M}
     M.(point_values(p, args...)...)
 end
+
+"""
+    nakedvalues(p::Points) -> AbstractVector
+    nakedvalues(p::Points, b, e) -> AbstractVector
+
+Return the raw timestamp values from a points collection, stripping any marks.
+Equivalent to `point_values(nakedpoints(p), ...)`.
+"""
 nakedvalues(p::Points, b, e) = point_values(nakedpoints(p), b, e)
 nakedvalues(p::Points) = nakedvalues(p, bounds(p)...)
 
-# I do not check, nor require, that points are strictly increasing
+"""
+    NakedPoints{E,I,A} <: Points{E,1,I,NakedPoint{E}}
+
+A sorted vector of timestamps of type `E` defined on an interval of type `I`.
+Points need not be strictly increasing, but must be non-decreasingly sorted.
+
+# Constructors
+
+    NakedPoints(points::AbstractVector{E}, interval::Interval{E})
+    NakedPoints(points::AbstractVector{E}, (a, b))
+    NakedPoints(points::AbstractVector{E}, a, b)
+    NakedPoints(points::AbstractVector)
+
+The first three forms accept an explicit interval; unsorted input is sorted in-place.
+The last form infers the interval from `(minimum(points), maximum(points))` and
+requires a non-empty vector.
+
+Throws `ArgumentError` if points fall outside the given interval.
+"""
 struct NakedPoints{E<:Number,I<:Interval{E},A<:AbstractVector{E}} <:
        Points{E,1,I,NakedPoint{E}}
     points::A
@@ -93,6 +166,13 @@ end
 function NakedPoints(points::AbstractVector{<:NakedPoint}, args...)
     NakedPoints(getfield.(points, :point), args...)
 end
+function NakedPoints(
+    points::AbstractVector{<:NakedPoint{E}},
+    interval::NTuple{2,<:Any},
+    check::Bool = true,
+) where {E}
+    NakedPoints(getfield.(points, :point), interval, check)
+end
 
 validate_interval(int::NTuple{2,Number}) = int[2] >= int[1]
 validate_interval(i::Interval) = validate_interval(bounds(i))
@@ -130,8 +210,21 @@ point_values(p::NakedPoints) = p.points
 
 points(p::NakedPoints, args...) = NakedPoint.(point_values(p, args...))
 
+"""
+    nakedpoints(p::Points) -> NakedPoints
+
+Extract or return the underlying [`NakedPoints`](@ref) (timestamps only, no marks).
+Identity on `NakedPoints` inputs. For [`SubPoints`](@ref), materialises a new
+`NakedPoints` covering the sub-interval.
+"""
 nakedpoints(p::NakedPoints) = p
 
+"""
+    translate(p::NakedPoints, offset) -> NakedPoints
+    translate(p::VariablePoints, offset) -> VariablePoints
+
+Shift all timestamps and the domain interval by `offset`. Marks are preserved.
+"""
 function translate(p::NakedPoints, offset)
     rb, re = bounds(p)
     NakedPoints(p.points .+ offset, (rb + offset, re + offset))
@@ -140,6 +233,23 @@ end
 point_range(p::Points, args...) = point_range(nakedpoints(p), args...)
 count(p::Points, args...) = count(nakedpoints(p), args...)
 
+"""
+    VariablePoints{E,I,P,M,A} <: Points{E,1,I,MarkedPoint{E,M}}
+
+A sorted collection of timestamps paired with per-point marks of type `M`.
+Wraps a [`NakedPoints`](@ref) for the timestamps and a separate marks vector.
+
+# Constructors
+
+    VariablePoints(nakedpoints::NakedPoints, marks::AbstractVector)
+    VariablePoints(points::AbstractVector, marks::AbstractVector, interval_args...)
+    VariablePoints(pts::AbstractVector{<:MarkedPoint}, interval_args...)
+
+The second form sorts `points` and permutes `marks` to match. The third form
+destructures `MarkedPoint` elements. All forms require `length(points) == length(marks)`.
+
+See also [`get_mark`](@ref), [`point_values`](@ref).
+"""
 struct VariablePoints{E,I<:Interval{E},P<:NakedPoints{E,I,<:Any},M,A<:AbstractVector{M}} <:
        Points{E,1,I,MarkedPoint{E,M}}
     nakedpoints::P
@@ -168,15 +278,15 @@ function VariablePoints(points::AbstractVector, marks::AbstractVector, args...)
     sp = sortperm(mypoints)
     mypoints = mypoints[sp]
     mymarks = mymarks[sp]
-    pp = NakedPoints(points, args...)
-    VariablePoints(pp, marks)
+    pp = NakedPoints(mypoints, args...)
+    VariablePoints(pp, mymarks)
 end
 
 function VariablePoints(pts::AbstractVector{<:MarkedPoint{E,M}}, args...) where {E,M}
     np = length(pts)
     ps = Vector{E}(undef, np)
     mks = Vector{M}(undef, np)
-    @inbounds @simd for i = 1:np
+    @inbounds for i = 1:np
         ps[i] = pts[i].point
         mks[i] = pts[i].mark
     end
@@ -220,9 +330,28 @@ point_values(mp::VariablePoints) = nakedpoints(mp).points, mp.marks
 translate(mp::VariablePoints, offset) =
     VariablePoints(translate(nakedpoints(mp), offset), mp.marks)
 
+"""
+    SubPoints{E,M,I,P} <: Points{E,1,I,M}
+
+A lazy, zero-copy view of a [`Points`](@ref) collection restricted to a sub-interval.
+Indexing uses a precomputed offset for O(1) element access.
+
+# Constructors
+
+    SubPoints(points::Points, interval::Interval)
+    SubPoints(points::Points, (a, b))
+    SubPoints(points::Points, a, b)
+
+The sub-interval must be contained within `interval(points)` (throws `ArgumentError`
+otherwise). Nesting `SubPoints` inside another `SubPoints` flattens automatically,
+referencing the original underlying data.
+
+See also [`maybe_subpoints`](@ref).
+"""
 struct SubPoints{E,M,I<:Interval{E},P<:Points{E,1,<:Any,M}} <: Points{E,1,I,M}
     points::P
     interval::I
+    offset::Int
     function SubPoints{E,M,I,P}(
         points::P,
         bnd_int::I,
@@ -233,7 +362,8 @@ struct SubPoints{E,M,I<:Interval{E},P<:Points{E,1,<:Any,M}} <: Points{E,1,I,M}
         if ! is_subinterval(bnd_int, interval(points))
             throw(ArgumentError("sub interval is not contained in parent interval"))
         end
-        new(points, bnd_int)
+        offset = searchsortedfirst(points, bounds(bnd_int)[1]) - 1
+        new(points, bnd_int, offset)
     end
 end
 
@@ -264,18 +394,19 @@ end
 size(spp::SubPoints) = (count(spp),)
 @inline function getindex(spp::SubPoints, i::Integer)
     @boundscheck checkbounds(spp, i)
-    ib = searchsortedfirst(spp.points, bounds(spp)[1])
-    @boundscheck ib > length(spp.points) && throw(BoundsError(spp, i))
-    @boundscheck if !checkbounds(Bool, nakedvalues(spp.points), i)
-        throw(BoundsError(spp, i))
-    end
-    @inbounds spp.points[i+ib-1]
+    @inbounds spp.points[i + spp.offset]
 end
 
+"""
+    maybe_subpoints(points::Points, i::Interval) -> SubPoints or nothing
+
+Return a [`SubPoints`](@ref) view if `i` overlaps with the domain of `points`, or
+`nothing` if there is no intersection.
+"""
 function maybe_subpoints(points::Points, i::Interval)
     pi = interval(points)
     int_int = interval_intersect(pi, i)
-    int_int == nothing ? nothing : SubPoints(points, int_int)
+    int_int === nothing ? nothing : SubPoints(points, int_int)
 end
 
 interval(spp::SubPoints) = spp.interval
@@ -283,17 +414,26 @@ count(spp::SubPoints) = count(spp.points, bounds(interval(spp))...)
 
 function count(spp::SubPoints, b, e)
     int_int = interval_intersect(bounds(spp.interval)..., b, e)
-    int_int == nothing ? zero(b) : count(spp.points, int_int...)
+    int_int === nothing ? zero(b) : count(spp.points, int_int...)
 end
 
-function point_values(spp::SubPoints, b, e)
+function point_values(spp::SubPoints{<:Any,<:NakedPoint}, b, e)
     int_int = interval_intersect(bounds(spp.interval)..., b, e)
-    if int_int == nothing
-        res = points_values(spp.points, 1, 0)
+    if int_int === nothing
+        view(nakedpoints(spp.points).points, 1:0)
     else
-        res = point_values(spp.points, int_int...)
+        point_values(spp.points, int_int...)
     end
-    res
+end
+
+function point_values(spp::SubPoints{<:Any,<:MarkedPoint}, b, e)
+    int_int = interval_intersect(bounds(spp.interval)..., b, e)
+    if int_int === nothing
+        np = nakedpoints(spp.points)
+        view(np.points, 1:0), view(get_mark(spp.points), 1:0)
+    else
+        point_values(spp.points, int_int...)
+    end
 end
 
 function nakedpoints(spp::SubPoints)
@@ -308,7 +448,7 @@ function show(io::IO, ::MIME"text/plain", pts::T) where {T<:SubPoints}
     print(io, "    ", pts)
 end
 
-function show(pts::SubPoints)
+function show(io::IO, pts::T) where {T<:SubPoints}
     if get(io, :typeinfo, T) != T
         print(io, T)
     end
@@ -319,16 +459,22 @@ subpoint_type(::Type{P}) where {E,M,P<:Points{E,1,<:Any,M}} =
     SubPoints{E,M,NakedInterval{E},P}
 subpoint_type(::Type{P}) where {P<:SubPoints} = P
 
+"""
+    interval_intersections_subpoints(points::AbstractVector{<:Points}, intervals::AbstractVector{<:Interval}) -> Vector{SubPoints}
+
+For each overlap between a points collection in `points` and an interval in `intervals`,
+produce a [`SubPoints`](@ref) view. Both inputs must be sorted by start time.
+
+This is the lower-level function behind [`points_intersects`](@ref).
+"""
 function interval_intersections_subpoints(
     points::AbstractVector{P},
     intervals::AbstractVector{<:Interval{E}},
 ) where {E,M,P<:Points{E,1,<:Any,M}}
     intervals_are_ordered(bounds, points) || error("points not well ordered")
     intervals_are_ordered(bounds, intervals) || error("intervals not well ordered")
-    na = length(points)
     nb = length(intervals)
-    outs = Vector{subpoint_type(P)}(undef, max(na, nb))
-    nout = 0
+    outs = subpoint_type(P)[]
     ib = 1
     @inbounds for pts in points
         ab, ae = bounds(pts)
@@ -338,15 +484,22 @@ function interval_intersections_subpoints(
         ib > nb && break
         icheck = ib
         while icheck <= nb && bounds(intervals[icheck])[1] < ae
-            nout += 1
-            outs[nout] = maybe_subpoints(pts, intervals[icheck])
+            push!(outs, maybe_subpoints(pts, intervals[icheck]))
             icheck += 1
         end
     end
-    clipsize!(outs, nout)
     outs
 end
 
+"""
+    points_intersects(pts1::AbstractVector{<:Points}, pts2::AbstractVector{<:Points}) -> (Vector{SubPoints}, Vector{SubPoints})
+
+Restrict two vectors of [`Points`](@ref) to only the time ranges where both have
+coverage. Returns a pair of `SubPoints` vectors aligned to the same intersection
+intervals. Both inputs must be sorted by start time.
+
+See also [`interval_intersections_subpoints`](@ref).
+"""
 function points_intersects(pts1::AbstractVector{<:Points}, pts2::AbstractVector{<:Points})
     ints1 = interval.(pts1)
     ints2 = interval.(pts2)
@@ -356,6 +509,19 @@ function points_intersects(pts1::AbstractVector{<:Points}, pts2::AbstractVector{
     return (newpts1, newpts2)
 end
 
+"""
+    pp_downsamp(p::Points, b, e, resolution, [merge_func=pt_merge], [RetType=eltype(p)]) -> VariablePoints
+
+Downsample points within `[b, e]` by merging consecutive points closer than `resolution`.
+Adjacent points whose gap is less than `resolution` are merged using `merge_func`. Each
+merged point receives a count mark (via [`push_mark`](@ref)) recording how many original
+points were combined.
+
+The default `merge_func` is [`pt_merge`](@ref) (mean of timestamps and marks).
+`RetType` specifies the return type of `merge_func` for type stability.
+
+See also [`pt_merge`](@ref), [`pt_extent_merge`](@ref), [`pop_marks`](@ref).
+"""
 function pp_downsamp(
     p::Points{E,1,<:Any,M},
     b,
@@ -366,29 +532,32 @@ function pp_downsamp(
 ) where {E,M,RetType}
     pnts = points(p, b, e)
     np = length(pnts)
-    downsamped_points = Vector{push_mark_type(RetType, Int)}(undef, np)
-    out_idx = 0
+    OutType = push_mark_type(RetType, Int)
+    downsamped_points = OutType[]
     @inbounds if np > 0
         range_st = 1
         for i = 2:np
-            if pnts[i].point - pnts[i-1].point >= resolution # End last range
-                out_idx += 1
+            if pnts[i].point - pnts[i-1].point >= resolution
                 mergecount = n_ndx(range_st, i - 1)
                 mergedpnt = merge_func(view(pnts, range_st:(i-1)))
-                downsamped_points[out_idx] = push_mark(mergedpnt, mergecount)
+                push!(downsamped_points, push_mark(mergedpnt, mergecount))
                 range_st = i
             end
         end
-        # Handle the last point
-        out_idx += 1
         mergecount = n_ndx(range_st, np)
         mergedpnt = merge_func(view(pnts, range_st:np))
-        downsamped_points[out_idx] = push_mark(mergedpnt, mergecount)
+        push!(downsamped_points, push_mark(mergedpnt, mergecount))
     end
-    resize!(downsamped_points, out_idx)
     VariablePoints(downsamped_points, b, e)
 end
 
+"""
+    pt_merge(pts::AbstractVector{<:NakedPoint}) -> NakedPoint
+    pt_merge(pts::AbstractVector{<:MarkedPoint}) -> MarkedPoint
+
+Merge a group of points by averaging their timestamps (and marks, for
+[`MarkedPoint`](@ref)). Used as the default merge function in [`pp_downsamp`](@ref).
+"""
 function pt_merge(pts::AbstractVector{<:NakedPoint{<:Number}})
     NakedPoint(mean(point_values(pts)))
 end
@@ -397,6 +566,16 @@ function pt_merge(pts::AbstractVector{<:MarkedPoint{<:Number,<:Number}})
     MarkedPoint(mean(pt_vals), mean(mark_vals))
 end
 
+"""
+    pt_extent_merge(pts::AbstractVector{<:MarkedPoint}) -> MarkedPoint
+    pt_extent_merge(pts::AbstractVector{<:NakedPoint}) -> MarkedPoint
+
+Merge a group of points by averaging timestamps and recording the extent `(min, max)`.
+For [`MarkedPoint`](@ref) inputs, returns `MarkedPoint(mean_time, ((min_time, max_time), mean_mark))`.
+For [`NakedPoint`](@ref) inputs, returns `MarkedPoint(mean_time, (min_time, max_time))`.
+
+Alternative merge function for [`pp_downsamp`](@ref).
+"""
 function pt_extent_merge(pts::AbstractVector{<:MarkedPoint{<:Number,<:Number}})
     pt_vals, mark_vals = point_values(pts)
     pt_mean = mean(pt_vals)
@@ -412,12 +591,28 @@ function pt_extent_merge(pts::AbstractVector{<:NakedPoint})
     MarkedPoint(pt_mean, pt_extent)
 end
 
+"""
+    pop_marks(p::VariablePoints) -> VariablePoints
+
+Strip the outermost element from tuple marks on all points. Each mark `(a, b)` becomes
+`b`. This is the collection-level counterpart of [`pop_mark`](@ref) and is useful for
+removing the merge-count mark added by [`pp_downsamp`](@ref).
+"""
 function pop_marks(p::VariablePoints)
     pt_vals, mark_vals = point_values(p)
     popped_marks = map(m -> m[2], mark_vals)
     VariablePoints(pt_vals, popped_marks, interval(p))
 end
 
+"""
+    join_points(pt::Points) -> NakedPoints or VariablePoints
+    join_points(pt1::Points, pt2::Points, pts::Points...) -> NakedPoints or VariablePoints
+
+Materialise or merge point collections. The single-argument form copies a (possibly
+lazy) `Points` into a concrete `NakedPoints` or `VariablePoints`. The multi-argument
+form concatenates points and sorts the result; the output interval is the union of all
+input intervals. All arguments must have the same point type (all naked or all marked).
+"""
 function join_points(pt::Points{<:Any,<:Any,<:Any,P}) where {P<:NakedPoint}
     newint = nakedinterval(pt)
     NakedPoints(collect(point_values(pt)), newint)

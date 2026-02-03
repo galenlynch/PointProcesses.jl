@@ -12,8 +12,11 @@ makedocs(;
         edit_link="main",
         assets=String[],
     ),
+    warnonly=[:missing_docs],
     pages=[
         "Home" => "index.md",
+        "Usage Guide" => "guide.md",
+        "API Reference" => "api.md",
     ],
 )
 
