@@ -8,7 +8,7 @@ EventIntervals provides interval-aware data structures for point processes. It c
 
 ## Motivation
 
-Working with recorded event data — spike trains, behavioral events, stimulus onsets — requires two abstractions that are tightly coupled in practice but rarely coupled in code: **collections of timestamped events** and **the temporal intervals they live on**. A spike train is not just a sorted vector of times; it is a sorted vector of times *defined on a recording interval*, and operations on it (computing a firing rate, windowing to a trial, intersecting with another recording) must respect that domain.
+Working with recorded event data — spike trains, calcium-imaging transients, behavioral syllable onsets — requires two abstractions that are tightly coupled in practice but rarely coupled in code: **collections of timestamped events** and **the temporal intervals they live on**. A spike train is not just a sorted vector of times; it is a sorted vector of times *defined on a recording interval*, and operations on it (computing a firing rate, windowing to a trial, intersecting with another recording) must respect that domain.
 
 EventIntervals makes this coupling explicit. Every `Points` object carries its domain interval, and the package provides operations that act on both together: windowing produces a lazy `SubPoints` view rather than a copy, rate calculations use the interval's measure as the denominator, and joining two point processes produces a result whose interval is the union of the inputs.
 
@@ -52,7 +52,7 @@ A typical workflow for trial-based neural data analysis:
 ```julia
 using EventIntervals
 
-# Spike times from a 30-second recording
+# Spike times from a 10-second recording
 spikes = NakedPoints([0.5, 1.3, 2.1, 4.7, 5.2, 8.0, 9.1], NakedInterval((0.0, 10.0)))
 
 # Define trial and inter-trial intervals
@@ -68,10 +68,15 @@ windows = chunk(NakedInterval((0.0, 10.0)), 2.5)
 # 4-element Vector{NakedInterval{Float64}}:
 #   (0.0, 2.5), (2.5, 5.0), (5.0, 7.5), (7.5, 10.0)
 
-# Compute overlap depth across a set of intervals
-levels = interval_levels([NakedInterval((0.0, 5.0)),
-                          NakedInterval((3.0, 8.0)),
-                          NakedInterval((6.0, 10.0))])
+# Windowed firing rate: slice spikes into each window
+window_rates = [rate(SubPoints(spikes, w)) for w in windows]
+
+# Restrict spikes to only the windows that overlap a set of stimulus intervals
+stim_intervals = [NakedInterval((1.0, 3.0)), NakedInterval((7.0, 9.0))]
+stim_spikes = interval_intersections_subpoints([spikes], stim_intervals)
+
+# Find silence periods: complement the stimulus intervals, then shrink edges
+silence = shrink(complement(interval(spikes), stim_intervals), 0.5)
 
 # Downsample dense spike trains for visualization
 downsampled = pp_downsamp(spikes, 0.0, 10.0, 1.0)

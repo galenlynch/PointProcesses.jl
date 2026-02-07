@@ -632,4 +632,229 @@ const srand = Random.seed!
         @test nakedpointvalue(merged_n) ≈ 7.0 / 3
         @test merged_n.mark == (1.0, 4.0)
     end
+
+    # --------------------------------------------------
+    # 7. Documentation examples
+    # --------------------------------------------------
+
+    @testset "index.md examples" begin
+        # Example Workflow
+        spikes = NakedPoints([0.5, 1.3, 2.1, 4.7, 5.2, 8.0, 9.1], NakedInterval((0.0, 10.0)))
+
+        trial = NakedInterval((2.0, 6.0))
+        baseline = complement(EventIntervals.interval(spikes), trial)
+        @test length(baseline) == 2
+        @test bounds(baseline[1]) == (0.0, 2.0)
+        @test bounds(baseline[2]) == (6.0, 10.0)
+
+        trial_spikes = SubPoints(spikes, trial)
+        @test rate(trial_spikes) == 0.75
+
+        windows = chunk(NakedInterval((0.0, 10.0)), 2.5)
+        @test length(windows) == 4
+        @test bounds(windows[1]) == (0.0, 2.5)
+        @test bounds(windows[4]) == (7.5, 10.0)
+
+        window_rates = [rate(SubPoints(spikes, w)) for w in windows]
+        @test window_rates == [1.2, 0.4, 0.4, 0.8]
+
+        stim_intervals = [NakedInterval((1.0, 3.0)), NakedInterval((7.0, 9.0))]
+        stim_spikes = interval_intersections_subpoints([spikes], stim_intervals)
+        @test length(stim_spikes) == 2
+
+        silence = shrink(complement(EventIntervals.interval(spikes), stim_intervals), 0.5)
+        @test length(silence) == 3
+        @test bounds(silence[1]) == (0.25, 0.75)
+
+        downsampled = pp_downsamp(spikes, 0.0, 10.0, 1.0)
+        @test count(downsampled) == 4
+    end
+
+    @testset "guide.md interval examples" begin
+        # NakedInterval basics
+        int = NakedInterval((0.0, 10.0))
+        @test bounds(int) == (0.0, 10.0)
+        @test measure(int) == 10.0
+        @test midpoint(int) == 5.0
+
+        # Two-arg constructor
+        @test NakedInterval(0.0, 10.0) == int
+
+        # MarkedInterval
+        trial = MarkedInterval((0.0, 5.0), "stimulus_A")
+        @test get_mark(trial) == "stimulus_A"
+        @test bounds(trial) == (0.0, 5.0)
+        @test measure(trial) == 5.0
+
+        # RelativeInterval
+        reference = NakedInterval((5.0, 8.0))
+        rel = RelativeInterval(reference, true, NakedInterval((-1.0, 3.0)))
+        @test bounds(rel) == (4.0, 8.0)
+
+        # IntervalSet
+        iset = IntervalSet(NakedInterval((0.0, 5.0)), MarkedInterval((5.0, 10.0), :stim))
+        @test bounds(iset) == (0.0, 10.0)
+        @test measure(iset) == 10.0
+        @test get_mark(iset) == :stim
+
+        # Complement (single)
+        domain = NakedInterval((0.0, 10.0))
+        stim = NakedInterval((3.0, 7.0))
+        baseline = complement(domain, stim)
+        @test length(baseline) == 2
+        @test bounds(baseline[1]) == (0.0, 3.0)
+        @test bounds(baseline[2]) == (7.0, 10.0)
+
+        # Complement (vector)
+        stims = [NakedInterval((2.0, 4.0)), NakedInterval((6.0, 8.0))]
+        gaps = complement(domain, stims)
+        @test length(gaps) == 3
+        @test bounds(gaps[1]) == (0.0, 2.0)
+        @test bounds(gaps[2]) == (4.0, 6.0)
+        @test bounds(gaps[3]) == (8.0, 10.0)
+
+        # Chunking
+        chunks = chunk(NakedInterval((0.0, 10.0)), 3.0)
+        @test length(chunks) == 4
+        @test bounds(chunks[1]) == (0.0, 3.0)
+        @test bounds(chunks[4]) == (9.0, 10.0)
+
+        # Chunking exact
+        chunks_exact = chunk(NakedInterval((0.0, 10.0)), 3.0, true)
+        @test length(chunks_exact) == 3
+        @test bounds(chunks_exact[3]) == (6.0, 9.0)
+
+        # Chunking vector
+        vchunks = chunk([NakedInterval((0.0, 5.0)), NakedInterval((10.0, 15.0))], 2.5)
+        @test length(vchunks) == 4
+
+        # Shrinking
+        @test shrink(NakedInterval((0.0, 10.0)), 2.0) == NakedInterval((1.0, 9.0))
+
+        # Shifting
+        @test shift_interval(NakedInterval((0.0, 5.0)), 10.0) == NakedInterval((10.0, 15.0))
+
+        # Shifting (curried)
+        shifter = shift_interval(10.0)
+        @test shifter(NakedInterval((0.0, 5.0))) == NakedInterval((10.0, 15.0))
+
+        # Overlap depth
+        intervals = [NakedInterval((0.0, 5.0)),
+                     NakedInterval((3.0, 8.0)),
+                     NakedInterval((6.0, 10.0))]
+        levels = interval_levels(intervals)
+        @test length(levels) == 5
+        @test get_mark(levels[1]) == 1
+        @test get_mark(levels[2]) == 2
+
+        # Intersection
+        @test interval_intersect(NakedInterval((0.0, 5.0)), NakedInterval((3.0, 8.0))) ==
+              NakedInterval((3.0, 5.0))
+
+        # Pairwise intersections
+        isects = interval_intersections(
+            [NakedInterval((0.0, 5.0)), NakedInterval((7.0, 10.0))],
+            [NakedInterval((3.0, 8.0))],
+        )
+        @test length(isects) == 2
+        @test bounds(isects[1]) == (3.0, 5.0)
+        @test bounds(isects[2]) == (7.0, 8.0)
+
+        # Subinterval
+        @test subinterval(NakedInterval((0.0, 10.0)), NakedInterval((2.0, 8.0))) ==
+              NakedInterval((2.0, 8.0))
+
+        # Relative coordinates
+        rel_int = relative_interval(NakedInterval((5.0, 8.0)), NakedInterval((4.0, 10.0)))
+        @test bounds(rel_int) == (1.0, 4.0)
+
+        # Other utilities
+        @test check_overlap(NakedInterval((0.0, 5.0)), NakedInterval((3.0, 8.0))) == true
+        @test is_subinterval(NakedInterval((2.0, 4.0)), NakedInterval((0.0, 10.0))) == true
+        @test (5.0 in NakedInterval((0.0, 10.0))) == true
+    end
+
+    @testset "guide.md points examples" begin
+        # NakedPoints construction
+        spikes = NakedPoints([0.5, 1.3, 2.1, 4.7, 5.2, 8.0, 9.1], NakedInterval((0.0, 10.0)))
+
+        # Unsorted input
+        spikes_unsorted = NakedPoints([9.1, 0.5, 4.7, 2.1, 1.3, 8.0, 5.2], NakedInterval((0.0, 10.0)))
+        @test point_values(spikes_unsorted) == point_values(spikes)
+
+        # Tuple and two-arg constructors
+        np_tuple = NakedPoints([1.0, 2.0, 3.0], (0.0, 5.0))
+        np_twoarg = NakedPoints([1.0, 2.0, 3.0], 0.0, 5.0)
+        @test point_values(np_tuple) == point_values(np_twoarg)
+
+        # Inferred interval
+        np_infer = NakedPoints([1.0, 2.0, 3.0])
+        @test bounds(np_infer) == (1.0, 3.0)
+
+        # Basic queries
+        @test count(spikes) == 7
+        @test duration(spikes) == 10.0
+        @test rate(spikes) == 0.7
+        @test bounds(spikes) == (0.0, 10.0)
+        @test EventIntervals.interval(spikes) == NakedInterval((0.0, 10.0))
+        @test count(spikes, 2.0, 6.0) == 3
+        @test rate(spikes, 2.0, 6.0) == 0.75
+
+        # Translation
+        shifted = translate(spikes, 100.0)
+        @test bounds(shifted) == (100.0, 110.0)
+
+        # VariablePoints
+        np = NakedPoints([1.0, 2.0, 3.0], NakedInterval((0.0, 5.0)))
+        vp = VariablePoints(np, [:a, :b, :c])
+        @test vp[1] == MarkedPoint(1.0, :a)
+
+        # SubPoints
+        trial = SubPoints(spikes, NakedInterval((2.0, 6.0)))
+        @test count(trial) == 3
+        @test rate(trial) == 0.75
+        @test duration(trial) == 4.0
+
+        # SubPoints alternative constructors
+        @test count(SubPoints(spikes, (2.0, 6.0))) == 3
+        @test count(SubPoints(spikes, 2.0, 6.0)) == 3
+
+        # maybe_subpoints
+        @test maybe_subpoints(spikes, NakedInterval((2.0, 6.0))) !== nothing
+        @test maybe_subpoints(spikes, NakedInterval((20.0, 30.0))) === nothing
+
+        # Mark operations
+        p = NakedPoint(1.0)
+        mp = push_mark(p, :neuron_A)
+        @test mp == MarkedPoint(1.0, :neuron_A)
+        mp2 = push_mark(mp, 42)
+        @test mp2 == MarkedPoint(1.0, (42, :neuron_A))
+        inner, outer_mark = pop_mark(mp2)
+        @test inner == MarkedPoint(1.0, (:neuron_A,))
+        @test outer_mark == 42
+
+        # join_points
+        a = NakedPoints([1.0, 3.0], NakedInterval((0.0, 5.0)))
+        b = NakedPoints([2.0, 7.0], NakedInterval((0.0, 10.0)))
+        joined = join_points(a, b)
+        @test count(joined) == 4
+        @test bounds(joined) == (0.0, 10.0)
+
+        # points_intersects
+        pts1 = [NakedPoints([1.0, 2.0], NakedInterval((0.0, 5.0)))]
+        pts2 = [NakedPoints([3.0, 6.0], NakedInterval((2.0, 8.0)))]
+        sub1, sub2 = points_intersects(pts1, pts2)
+        @test length(sub1) == 1
+        @test length(sub2) == 1
+
+        # Downsampling
+        dense = NakedPoints([1.0, 1.1, 1.2, 5.0, 5.05, 9.0], NakedInterval((0.0, 10.0)))
+        ds = pp_downsamp(dense, 0.0, 10.0, 0.5)
+        @test count(ds) < 6
+
+        # Aggregate rate
+        t1 = SubPoints(spikes, NakedInterval((0.0, 5.0)))
+        t2 = SubPoints(spikes, NakedInterval((5.0, 10.0)))
+        @test rate([t1, t2]) == rate(spikes)
+    end
 end

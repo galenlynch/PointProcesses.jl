@@ -510,7 +510,7 @@ function points_intersects(pts1::AbstractVector{<:Points}, pts2::AbstractVector{
 end
 
 """
-    pp_downsamp(p::Points, b, e, resolution, [merge_func=pt_merge], [RetType=eltype(p)]) -> VariablePoints
+    pp_downsamp(p::Points, b, e, resolution, [merge_func=pt_merge], [RetType=M]) -> VariablePoints
 
 Downsample points within `[b, e]` by merging consecutive points closer than `resolution`.
 Adjacent points whose gap is less than `resolution` are merged using `merge_func`. Each
@@ -518,7 +518,8 @@ merged point receives a count mark (via [`push_mark`](@ref)) recording how many 
 points were combined.
 
 The default `merge_func` is [`pt_merge`](@ref) (mean of timestamps and marks).
-`RetType` specifies the return type of `merge_func` for type stability.
+`RetType` specifies the element type returned by `merge_func` for type stability;
+it defaults to `M`, the point element type of the input collection.
 
 See also [`pt_merge`](@ref), [`pt_extent_merge`](@ref), [`pop_marks`](@ref).
 """

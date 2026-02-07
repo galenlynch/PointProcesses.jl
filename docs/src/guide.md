@@ -129,7 +129,7 @@ intervals = [NakedInterval((0.0, 5.0)),
 levels = interval_levels(intervals)
 ```
 
-[`interval_levels`](@ref) returns a vector of `MarkedInterval{Float64,Int}` where the mark is the overlap count. Assumes input is sorted by start time.
+[`interval_levels`](@ref) returns a vector of `MarkedInterval{E,Int}` (where `E` matches the element type of the input intervals) with the mark being the overlap count. Assumes input is sorted by start time.
 
 **Intersection and subintervals** — find overlapping regions:
 
@@ -137,7 +137,7 @@ levels = interval_levels(intervals)
 interval_intersect(NakedInterval((0.0, 5.0)), NakedInterval((3.0, 8.0)))
 # NakedInterval((3.0, 5.0))
 
-# Pairwise intersections between two sorted, non-overlapping vectors
+# Pairwise intersections between two sorted vectors
 interval_intersections([NakedInterval((0.0, 5.0)), NakedInterval((7.0, 10.0))],
                        [NakedInterval((3.0, 8.0))])
 # [NakedInterval((3.0, 5.0)), NakedInterval((7.0, 8.0))]
